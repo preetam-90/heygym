@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  GYM_OWNER
+  ADMIN
+}
+
+enum GymStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String
+  email         String       @unique
+  passwordHash  String
+  role          Role         @default(USER)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  gyms          Gym[]
+  resetToken    String?      @unique
+  resetTokenExpiry DateTime?
+}
+
+model Gym {
+  id              String             @id @default(cuid())
+  ownerId         String
+  owner           User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  address         String
+  city            String
+  phone           String?
+  email           String?
+  imageUrl        String?
+  status          GymStatus          @default(PENDING)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  membershipPlans MembershipPlan[]
+}
+
+model MembershipPlan {
+  id          String   @id @default(cuid())
+  gymId       String
+  gym         Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       Float
+  duration    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

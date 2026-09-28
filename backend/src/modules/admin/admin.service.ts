@@ -38,7 +38,11 @@ export class AdminService {
     return prisma.$transaction(async (tx) => {
       const gym = await tx.gym.update({
         where: { id: gymId },
-        data: { status: input.status },
+        data: {
+          status: input.status,
+          rejectionReason: input.status === 'REJECTED' ? (input.reason ?? null) : null,
+          verifiedAt: input.status === 'APPROVED' ? new Date() : undefined,
+        },
         include: {
           owner: { select: { id: true, name: true, email: true } },
         },

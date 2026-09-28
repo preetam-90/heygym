@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify';
+import { mkdirSync } from 'fs';
 import path from 'path';
 import { corsPlugin } from './plugins/cors';
 import { authPlugin } from './plugins/auth';
@@ -20,8 +21,11 @@ export async function createApp(): Promise<FastifyInstance> {
     limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   });
 
+  const uploadsDir = process.env.STORAGE_DIR ?? path.join(__dirname, '..', 'uploads');
+  mkdirSync(uploadsDir, { recursive: true });
+
   await fastify.register(import('@fastify/static'), {
-    root: process.env.STORAGE_DIR ?? path.join(__dirname, '..', 'uploads'),
+    root: uploadsDir,
     prefix: '/uploads/',
   });
 

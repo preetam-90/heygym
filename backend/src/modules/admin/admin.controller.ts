@@ -25,7 +25,11 @@ export class AdminController {
 
   async updateGymStatus(request: FastifyRequest<{ Params: { id: string }; Body: UpdateGymStatusInput }>, reply: FastifyReply) {
     try {
-      const gym = await this.adminService.updateGymStatus(request.params.id, request.body);
+      const actorId = (request as unknown as { user?: { id?: string } }).user?.id ?? null;
+      const gym = await this.adminService.updateGymStatus(request.params.id, request.body, {
+        actorId,
+        ip: request.ip ?? null,
+      });
       return reply.send({ success: true, data: { gym } });
     } catch (error) {
       return reply.status(400).send({

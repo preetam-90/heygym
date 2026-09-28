@@ -5,6 +5,7 @@ import { authRoutes } from './modules/auth/auth.routes';
 import { usersRoutes } from './modules/users/users.routes';
 import { gymsRoutes } from './modules/gyms/gyms.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
+import { auditRoutes } from './modules/audit/audit.routes';
 
 export async function createApp(): Promise<FastifyInstance> {
   const fastify = (await import('fastify')).default({
@@ -20,6 +21,7 @@ export async function createApp(): Promise<FastifyInstance> {
   await fastify.register(usersRoutes, { prefix: '/api/v1/users' });
   await fastify.register(gymsRoutes, { prefix: '/api/v1/gyms' });
   await fastify.register(adminRoutes, { prefix: '/api/v1/admin' });
+  await fastify.register(auditRoutes, { prefix: '/api/v1/admin' });
 
   fastify.setErrorHandler((error, _request, reply) => {
     fastify.log.error(error);

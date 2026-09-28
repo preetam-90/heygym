@@ -1,5 +1,11 @@
 import { prisma } from '../../lib/prisma';
+import { writeAudit } from '../../lib/audit';
 import { UpdateGymStatusInput } from './admin.schema';
+
+export interface GymStatusAuditMeta {
+  actorId?: string | null;
+  ip?: string | null;
+}
 
 export class AdminService {
   async getUsers() {
@@ -28,15 +34,28 @@ export class AdminService {
     return gyms;
   }
 
-  async updateGymStatus(gymId: string, input: UpdateGymStatusInput) {
-    const gym = await prisma.gym.update({
-      where: { id: gymId },
-      data: { status: input.status },
-      include: {
-        owner: { select: { id: true, name: true, email: true } },
-      },
+  async updateGymStatus(gymId: string, input: UpdateGymStatusInput, meta?: GymStatusAuditMeta) {
+    return prisma.$transaction(async (tx) => {
+      const gym = await tx.gym.update({
+        where: { id: gymId },
+        data: { status: input.status },
+        include: {
+          owner: { select: { id: true, name: true, email: true } },
+        },
+      });
+      await writeAudit(
+        {
+          actorId: meta?.actorId ?? null,
+          action: input.status === 'APPROVED' ? 'gym.approve' : 'gym.reject',
+          targetType: 'gym',
+          targetId: gymId,
+          reason: input.reason ?? null,
+          ip: meta?.ip ?? null,
+        },
+        tx,
+      );
+      return gym;
     });
-    return gym;
   }
 
   async getStats() {

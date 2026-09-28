@@ -22,6 +22,7 @@ export const PERMISSIONS = [
   'enquiries.manage',
   'bookings.view',
   'bookings.manage',
+  'audit.view',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

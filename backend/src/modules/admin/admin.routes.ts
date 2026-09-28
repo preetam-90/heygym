@@ -30,7 +30,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.route({
     method: 'PATCH',
     url: '/gyms/:id/status',
-    preHandler: [fastify.authenticate, fastify.requireRole('ADMIN')],
+    preHandler: [fastify.authenticate, fastify.requireRole('ADMIN'), fastify.requirePermission('gyms.approve')],
     handler: adminController.updateGymStatus.bind(adminController),
   });
 };

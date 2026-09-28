@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import { env } from '../config/env';
+import { buildRequirePermission } from './permissions';
 
 export const authPlugin: FastifyPluginAsync = fp(async (fastify) => {
   await fastify.register(import('@fastify/jwt'), {
@@ -84,6 +85,8 @@ export const authPlugin: FastifyPluginAsync = fp(async (fastify) => {
       }
     };
   });
+
+  fastify.decorate('requirePermission', buildRequirePermission());
 });
 
 declare module 'fastify' {
@@ -91,5 +94,6 @@ declare module 'fastify' {
     authenticate: (request: any, reply: any) => Promise<void>;
     refreshAuthenticate: (request: any, reply: any) => Promise<void>;
     requireRole: (...roles: string[]) => (request: any, reply: any) => Promise<void>;
+    requirePermission: (permission: string) => (request: any, reply: any) => Promise<void>;
   }
 }

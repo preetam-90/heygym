@@ -32,7 +32,7 @@ export class AuthController {
 
   async login(request: FastifyRequest<{ Body: LoginInput }>, reply: FastifyReply) {
     try {
-      const user = await this.authService.login(request.body);
+      const user = await this.authService.login(request.body, { ip: request.ip });
       const tokens = this.authService.generateTokens({
         id: user.id,
         email: user.email,
@@ -45,6 +45,26 @@ export class AuthController {
         data: { user: { id: user.id, name: user.name, email: user.email, role: user.role }, ...tokens },
       });
     } catch (error) {
+      const code = (error as any)?.code;
+      const statusCode = (error as any)?.statusCode;
+      if (code === 'RATE_LIMITED') {
+        return reply.status(429).send({
+          success: false,
+          error: {
+            code: 'RATE_LIMITED',
+            message: error instanceof Error ? error.message : 'Too many login attempts',
+          },
+        });
+      }
+      if (statusCode === 403 && (code === 'ACCOUNT_SUSPENDED' || code === 'ACCOUNT_BANNED')) {
+        return reply.status(403).send({
+          success: false,
+          error: {
+            code,
+            message: error instanceof Error ? error.message : 'Account is not active',
+          },
+        });
+      }
       return reply.status(401).send({
         success: false,
         error: {
@@ -110,6 +130,16 @@ export class AuthController {
         data: tokens,
       });
     } catch (error) {
+      const code = (error as any)?.code;
+      if (code === 'ACCOUNT_SUSPENDED' || code === 'ACCOUNT_BANNED') {
+        return reply.status(403).send({
+          success: false,
+          error: {
+            code,
+            message: error instanceof Error ? error.message : 'Account is not active',
+          },
+        });
+      }
       return reply.status(401).send({
         success: false,
         error: {

@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify';
+import path from 'path';
 import { corsPlugin } from './plugins/cors';
 import { authPlugin } from './plugins/auth';
 import { authRoutes } from './modules/auth/auth.routes';
@@ -14,6 +15,15 @@ export async function createApp(): Promise<FastifyInstance> {
 
   await fastify.register(corsPlugin);
   await fastify.register(authPlugin);
+
+  await fastify.register(import('@fastify/multipart'), {
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  });
+
+  await fastify.register(import('@fastify/static'), {
+    root: process.env.STORAGE_DIR ?? path.join(__dirname, '..', 'uploads'),
+    prefix: '/uploads/',
+  });
 
   fastify.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 

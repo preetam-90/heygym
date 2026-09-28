@@ -10,7 +10,7 @@ import { env } from '../config/env';
 // every auth request with a CORS error.
 export const corsPlugin: FastifyPluginAsync = fp(async (fastify) => {
   await fastify.register(import('@fastify/cors'), {
-    origin: env.FRONTEND_URL,
+    origin: [env.FRONTEND_URL, env.ADMIN_URL],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

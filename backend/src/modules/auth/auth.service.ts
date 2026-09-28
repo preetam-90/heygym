@@ -80,27 +80,30 @@ export class AuthService {
 
   async login(input: LoginInput, opts?: { ip?: string }) {
     const key = throttleKey(opts?.ip, input.email);
-    try {
-      checkLoginThrottle(key);
-    } catch (err) {
-      try {
-        await writeAudit({
-          action: 'auth.login_throttled',
-          targetType: 'User',
-          reason: input.email.trim().toLowerCase(),
-          ip: opts?.ip ?? null,
-        });
-      } catch {
-        // Audit failure must never change the throttle decision.
-      }
-      throw err;
-    }
 
+    // Look up the user and verify credentials BEFORE touching the throttle
+    // budget, so blocked accounts always get 403 regardless of attempt count
+    // and only genuine credential failures consume throttle budget.
     const user = await prisma.user.findUnique({
       where: { email: input.email },
     });
 
     if (!user) {
+      try {
+        checkLoginThrottle(key);
+      } catch (err) {
+        try {
+          await writeAudit({
+            action: 'auth.login_throttled',
+            targetType: 'User',
+            reason: input.email.trim().toLowerCase(),
+            ip: opts?.ip ?? null,
+          });
+        } catch {
+          // Audit failure must never change the throttle decision.
+        }
+        throw err;
+      }
       try {
         await writeAudit({
           action: 'auth.login_failed',
@@ -116,6 +119,21 @@ export class AuthService {
 
     const isValid = await argon2.verify(user.passwordHash, input.password);
     if (!isValid) {
+      try {
+        checkLoginThrottle(key);
+      } catch (err) {
+        try {
+          await writeAudit({
+            action: 'auth.login_throttled',
+            targetType: 'User',
+            reason: input.email.trim().toLowerCase(),
+            ip: opts?.ip ?? null,
+          });
+        } catch {
+          // Audit failure must never change the throttle decision.
+        }
+        throw err;
+      }
       try {
         await writeAudit({
           actorId: user.id,
@@ -149,6 +167,21 @@ export class AuthService {
       );
     }
 
+    try {
+      checkLoginThrottle(key);
+    } catch (err) {
+      try {
+        await writeAudit({
+          action: 'auth.login_throttled',
+          targetType: 'User',
+          reason: input.email.trim().toLowerCase(),
+          ip: opts?.ip ?? null,
+        });
+      } catch {
+        // Audit failure must never change the throttle decision.
+      }
+      throw err;
+    }
     clearLoginThrottle(key);
     const updated = await prisma.user.update({
       where: { id: user.id },
@@ -234,7 +267,8 @@ export class AuthService {
         email: user.email,
         role: user.role,
       });
-    } catch {
+    } catch (e) {
+      if (e instanceof AccountBlockedError) throw e;
       throw new Error('Invalid refresh token');
     }
   }

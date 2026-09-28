@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +34,7 @@ type GymOwnerForm = z.infer<typeof gymOwnerSchema>;
 
 export default function GymOwnerRegisterPage() {
   const router = useRouter();
+  const { register: registerOwner } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +51,7 @@ export default function GymOwnerRegisterPage() {
     setError(null);
     try {
       // Register user as GYM_OWNER
-      const authResponse = await api.register({
+      await registerOwner({
         name: data.name,
         email: data.email,
         password: data.password,

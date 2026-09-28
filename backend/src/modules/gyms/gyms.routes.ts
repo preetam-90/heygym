@@ -28,21 +28,21 @@ export const gymsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.route({
     method: 'POST',
     url: '/',
-    preHandler: fastify.authenticate,
+    preHandler: [fastify.authenticate, fastify.requireRole('GYM_OWNER', 'ADMIN')],
     handler: gymsController.createGym.bind(gymsController),
   });
 
   fastify.route({
     method: 'PATCH',
     url: '/:id',
-    preHandler: fastify.authenticate,
+    preHandler: [fastify.authenticate, fastify.requireRole('GYM_OWNER', 'ADMIN')],
     handler: gymsController.updateGym.bind(gymsController),
   });
 
   fastify.route({
     method: 'POST',
     url: '/:id/membership-plans',
-    preHandler: fastify.authenticate,
+    preHandler: [fastify.authenticate, fastify.requireRole('GYM_OWNER', 'ADMIN')],
     handler: gymsController.createMembershipPlan.bind(gymsController),
   });
 
@@ -55,7 +55,7 @@ export const gymsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.route({
     method: 'PATCH',
     url: '/:id/membership-plans/:planId',
-    preHandler: fastify.authenticate,
+    preHandler: [fastify.authenticate, fastify.requireRole('GYM_OWNER', 'ADMIN')],
     handler: gymsController.updateMembershipPlan.bind(gymsController),
   });
 };

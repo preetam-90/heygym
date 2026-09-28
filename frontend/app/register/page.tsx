@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { register: registerUser } = useAuth();
   const redirect = searchParams.get('redirect') ?? '/';
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,7 @@ function RegisterPageContent() {
     setLoading(true);
     setError(null);
     try {
-      await api.register({
+      await registerUser({
         name: data.name,
         email: data.email,
         password: data.password,

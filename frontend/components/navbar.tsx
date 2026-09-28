@@ -2,17 +2,21 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { api } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Dumbbell } from 'lucide-react';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const user = api.getStoredUser();
+  const { user, logout } = useAuth();
+  const router = useRouter();
 
   const handleLogout = async () => {
-    await api.logout();
-    window.location.href = '/';
+    await logout();
+    setMobileMenuOpen(false);
+    router.push('/');
+    router.refresh();
   };
 
   const navLinks = [

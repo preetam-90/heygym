@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Gym, MembershipPlan, User } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ type CreatePlanForm = z.infer<typeof createPlanSchema>;
 
 export default function GymOwnerDashboardPage() {
   const router = useRouter();
+  const { user: authUser, logout } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [gyms, setGyms] = useState<Gym[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,23 +58,32 @@ export default function GymOwnerDashboardPage() {
 
   useEffect(() => {
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAuth = async () => {
     try {
-      const storedUser = api.getStoredUser();
-      if (!storedUser) {
-        router.push('/login');
+      // Verify the session with the server — never trust localStorage alone.
+      let current = authUser;
+      if (!current) {
+        try {
+          current = await api.me();
+        } catch {
+          current = null;
+        }
+      }
+      if (!current) {
+        router.push('/login?redirect=/gym-owner/dashboard');
         return;
       }
-      if (storedUser.role !== 'GYM_OWNER' && storedUser.role !== 'ADMIN') {
+      if (current.role !== 'GYM_OWNER' && current.role !== 'ADMIN') {
         router.push('/');
         return;
       }
-      setUser(storedUser);
+      setUser(current);
       await fetchGyms();
     } catch (err) {
-      router.push('/login');
+      router.push('/login?redirect=/gym-owner/dashboard');
     }
   };
 
@@ -110,7 +121,7 @@ export default function GymOwnerDashboardPage() {
   };
 
   const handleLogout = async () => {
-    await api.logout();
+    await logout();
     router.push('/');
     router.refresh();
   };

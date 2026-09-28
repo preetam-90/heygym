@@ -37,8 +37,8 @@ export function Footer() {
           <div>
             <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-zinc-300">Legal</h3>
             <ul className="mt-4 space-y-2.5">
-              <li><Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-[#D4FF4F]">Privacy Policy</Link></li>
-              <li><Link href="#" className="text-sm text-zinc-400 transition-colors hover:text-[#D4FF4F]">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="text-sm text-zinc-400 transition-colors hover:text-[#D4FF4F]">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="text-sm text-zinc-400 transition-colors hover:text-[#D4FF4F]">Terms of Service</Link></li>
             </ul>
           </div>
         </div>

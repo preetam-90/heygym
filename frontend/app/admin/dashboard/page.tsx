@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Gym, User } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Loader2, Users, Dumbbell, Clock, CheckCircle, XCircle, AlertCircle, Log
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const { user: authUser, logout } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [gyms, setGyms] = useState<Gym[]>([]);
   const [stats, setStats] = useState<{ totalUsers: number; totalGyms: number; pendingGyms: number; approvedGyms: number; rejectedGyms: number } | null>(null);
@@ -19,22 +21,31 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAuth = async () => {
     try {
-      const storedUser = api.getStoredUser();
-      if (!storedUser) {
-        router.push('/login');
+      // Verify the session with the server — never trust localStorage alone.
+      let current = authUser;
+      if (!current) {
+        try {
+          current = await api.me();
+        } catch {
+          current = null;
+        }
+      }
+      if (!current) {
+        router.push('/login?redirect=/admin/dashboard');
         return;
       }
-      if (storedUser.role !== 'ADMIN') {
+      if (current.role !== 'ADMIN') {
         router.push('/');
         return;
       }
       await Promise.all([fetchStats(), fetchUsers(), fetchGyms()]);
     } catch (err) {
-      router.push('/login');
+      router.push('/login?redirect=/admin/dashboard');
     }
   };
 
@@ -78,7 +89,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleLogout = async () => {
-    await api.logout();
+    await logout();
     router.push('/');
     router.refresh();
   };

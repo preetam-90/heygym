@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/prisma';
 import argon2 from 'argon2';
 import { FastifyInstance } from 'fastify';
-import { RegisterInput, LoginInput } from './auth.schema';
+import { RegisterInput, LoginInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
 
 export class AuthService {
   constructor(private fastify: FastifyInstance) {}

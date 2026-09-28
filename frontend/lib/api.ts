@@ -2,58 +2,130 @@ import type { ApiResponse, AuthResponse, User, Gym, MembershipPlan } from '@/typ
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
+const isBrowser = () => typeof window !== 'undefined';
+
+function readStorage(key: string): string | null {
+  if (!isBrowser()) return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string): void {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage may be unavailable (private mode, SSR) — auth still works
+    // in-memory for the lifetime of the page.
+  }
+}
+
+function removeStorage(key: string): void {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
 class ApiClient {
   private baseUrl: string;
   private accessToken: string | null = null;
+  private refreshInFlight: Promise<string> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    if (typeof window !== 'undefined') {
-      this.accessToken = localStorage.getItem('accessToken');
-    }
+    this.accessToken = readStorage('accessToken');
   }
 
   setAccessToken(token: string | null) {
     this.accessToken = token;
-    if (typeof window !== 'undefined') {
-      if (token) {
-        localStorage.setItem('accessToken', token);
-      } else {
-        localStorage.removeItem('accessToken');
-      }
+    if (token) {
+      writeStorage('accessToken', token);
+    } else {
+      removeStorage('accessToken');
     }
   }
 
   getAccessToken(): string | null {
+    if (!this.accessToken) {
+      // Re-sync from storage (e.g. token set before this instance
+      // was constructed, or updated in another tab).
+      this.accessToken = readStorage('accessToken');
+    }
     return this.accessToken;
+  }
+
+  private clearAuthState() {
+    this.accessToken = null;
+    removeStorage('accessToken');
+    removeStorage('refreshToken');
+    removeStorage('user');
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryOnAuth = true,
   ): Promise<ApiResponse<T>> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
     };
 
-    if (this.accessToken) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
+    const token = this.getAccessToken();
+    if (token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers,
-      credentials: 'include',
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    } catch {
+      throw new Error('Unable to connect to the server. Please check your connection and try again.');
+    }
 
-    const data = await response.json();
+    let data: ApiResponse<T>;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Received an invalid response from the server. Please try again.');
+    }
+
+    if (response.status === 401 && retryOnAuth && !endpoint.startsWith('/auth/')) {
+      // Access token may have expired — try a single silent refresh, then retry once.
+      try {
+        await this.refreshToken();
+        return this.request<T>(endpoint, options, false);
+      } catch {
+        this.clearAuthState();
+        throw new Error('Session expired. Please log in again.');
+      }
+    }
 
     if (!response.ok) {
-      throw new Error(data.error?.message ?? 'Request failed');
+      const message =
+        typeof data?.error?.message === 'string' && data.error.message.length > 0
+          ? data.error.message
+          : 'Request failed. Please try again.';
+      throw new Error(message);
     }
 
     return data;
+  }
+
+  private storeAuthSession(auth: AuthResponse) {
+    this.setAccessToken(auth.accessToken);
+    writeStorage('refreshToken', auth.refreshToken);
+    writeStorage('user', JSON.stringify(auth.user));
   }
 
   async login(email: string, password: string): Promise<AuthResponse> {
@@ -62,9 +134,7 @@ class ApiClient {
       body: JSON.stringify({ email, password }),
     });
     if (response.data) {
-      this.setAccessToken(response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      this.storeAuthSession(response.data);
     }
     return response.data!;
   }
@@ -75,41 +145,65 @@ class ApiClient {
       body: JSON.stringify(data),
     });
     if (response.data) {
-      this.setAccessToken(response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      this.storeAuthSession(response.data);
     }
     return response.data!;
   }
 
   async logout(): Promise<void> {
-    await this.request('/auth/logout', { method: 'POST' });
-    this.setAccessToken(null);
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    try {
+      await this.request('/auth/logout', { method: 'POST' });
+    } catch {
+      // Logout must always clear local state, even if the network
+      // request fails — a stale token must never be left behind.
+    } finally {
+      this.clearAuthState();
+    }
   }
 
   async me(): Promise<User> {
     const response = await this.request<{ user: User }>('/auth/me');
     if (response.data) {
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      writeStorage('user', JSON.stringify(response.data.user));
     }
     return response.data!.user;
   }
 
   async refreshToken(): Promise<{ accessToken: string; refreshToken: string }> {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) throw new Error('No refresh token');
-    
-    const response = await this.request<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken }),
-    });
-    if (response.data) {
-      this.setAccessToken(response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
+    if (this.refreshInFlight) {
+      const accessToken = await this.refreshInFlight;
+      return { accessToken, refreshToken: readStorage('refreshToken') ?? '' };
     }
-    return response.data!;
+
+    const storedRefreshToken = readStorage('refreshToken');
+    if (!storedRefreshToken) throw new Error('No refresh token');
+
+    this.refreshInFlight = (async () => {
+      const response = await this.request<{ accessToken: string; refreshToken: string }>(
+        '/auth/refresh',
+        {
+          method: 'POST',
+          body: JSON.stringify({ refreshToken: storedRefreshToken }),
+        },
+        false,
+      );
+      if (response.data) {
+        this.setAccessToken(response.data.accessToken);
+        writeStorage('refreshToken', response.data.refreshToken);
+        return response.data.accessToken;
+      }
+      throw new Error('Session expired. Please log in again.');
+    })();
+
+    try {
+      const accessToken = await this.refreshInFlight;
+      return { accessToken, refreshToken: readStorage('refreshToken') ?? '' };
+    } catch (err) {
+      this.clearAuthState();
+      throw err;
+    } finally {
+      this.refreshInFlight = null;
+    }
   }
 
   async getGyms(): Promise<Gym[]> {
@@ -188,13 +282,17 @@ class ApiClient {
   }
 
   getStoredUser(): User | null {
-    if (typeof window === 'undefined') return null;
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    const userStr = readStorage('user');
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr) as User;
+    } catch {
+      return null;
+    }
   }
 
   isAuthenticated(): boolean {
-    return !!this.accessToken;
+    return !!this.getAccessToken();
   }
 }
 

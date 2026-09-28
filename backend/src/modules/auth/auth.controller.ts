@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from './auth.service';
-import { RegisterInput, LoginInput, RefreshInput } from './auth.schema';
+import { RegisterInput, LoginInput, RefreshInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
 
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -91,7 +91,7 @@ export class AuthController {
   }
 
   async refresh(request: FastifyRequest<{ Body: RefreshInput }>, reply: FastifyReply) {
-    const refreshToken = request.body.refreshToken ?? request.cookies?.refreshToken;
+    const refreshToken = request.body?.refreshToken ?? request.cookies?.refreshToken;
     if (!refreshToken) {
       return reply.status(401).send({
         success: false,

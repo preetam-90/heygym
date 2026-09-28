@@ -17,15 +17,11 @@ export class UsersController {
     }
   }
 
-  async updateProfile(request: FastifyRequest<{ Body: UpdateProfileInput; Params: { id: string } }>, reply: FastifyReply) {
+  async updateProfile(request: FastifyRequest<{ Body: UpdateProfileInput }>, reply: FastifyReply) {
     try {
+      // PATCH /me has no :id param — the authenticated user may only ever
+      // update their own profile, taken from the verified token.
       const userId = (request.user as any).id;
-      if (request.params.id !== userId) {
-        return reply.status(403).send({
-          success: false,
-          error: { code: 'FORBIDDEN', message: 'Cannot update another user' },
-        });
-      }
       const user = await this.usersService.updateProfile(userId, request.body);
       return reply.send({ success: true, data: { user } });
     } catch (error) {

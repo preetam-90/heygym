@@ -17,6 +17,14 @@ enum GymStatus {
   PENDING
   APPROVED
   REJECTED
+  UNDER_REVIEW
+  SUSPENDED
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
 }
 
 model User {
@@ -25,6 +33,11 @@ model User {
   email         String       @unique
   passwordHash  String
   role          Role         @default(USER)
+  status        UserStatus   @default(ACTIVE)
+  lastLoginAt   DateTime?
+  deletedAt     DateTime?
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   gyms          Gym[]
@@ -44,6 +57,9 @@ model Gym {
   email           String?
   imageUrl        String?
   status          GymStatus          @default(PENDING)
+  verifiedAt      DateTime?
+  deletedAt       DateTime?
+  internalNotes   String?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   membershipPlans MembershipPlan[]
@@ -59,4 +75,18 @@ model MembershipPlan {
   duration    Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  reason     String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
 }

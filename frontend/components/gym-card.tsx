@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Gym } from '@/types';
+import { photoSrc } from '@/lib/gym-owner';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MapPin, Dumbbell, ArrowRight } from 'lucide-react';
@@ -17,7 +18,8 @@ export function GymCard({ gym }: GymCardProps) {
     ? Math.min(...gym.membershipPlans.map(p => p.price))
     : null;
   const minPlan = minPrice != null ? gym.membershipPlans?.find(p => p.price === minPrice) : null;
-  const showImg = gym.imageUrl && !imgError;
+  const coverSrc = photoSrc(gym.imageUrl);
+  const showImg = !!coverSrc && !imgError;
 
   return (
     <Card className="group flex h-full flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-[#D4FF4F]/30 hover:shadow-[0_16px_50px_rgba(0,0,0,0.5)]">
@@ -27,7 +29,7 @@ export function GymCard({ gym }: GymCardProps) {
         </div>
         {showImg && (
           <img
-            src={gym.imageUrl as string}
+            src={coverSrc as string}
             alt={gym.name}
             loading="lazy"
             onError={() => setImgError(true)}

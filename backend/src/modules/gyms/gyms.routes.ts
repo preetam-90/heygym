@@ -12,6 +12,16 @@ export const gymsRoutes: FastifyPluginAsync = async (fastify) => {
   const gymsController = new GymsController(gymsService);
   const ownerGuard = ownerOnly(fastify);
 
+  // Optional auth: populates request.user for owners previewing their own
+  // non-approved gyms, but never rejects anonymous traffic (public page).
+  const optionalAuth = async (request: any, _reply: any) => {
+    try {
+      await request.jwtVerify();
+    } catch {
+      // Invalid/missing token → anonymous viewer (null).
+    }
+  };
+
   fastify.route({
     method: 'GET',
     url: '/',
@@ -28,6 +38,7 @@ export const gymsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.route({
     method: 'GET',
     url: '/:id',
+    preHandler: optionalAuth,
     handler: gymsController.getGymById.bind(gymsController),
   });
 

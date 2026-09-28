@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { photoSrc } from '@/lib/gym-owner';
 import { Gym } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ export default function GymDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
+  const coverSrc = photoSrc(gym?.imageUrl);
 
   useEffect(() => {
     fetchGym();
@@ -65,8 +67,8 @@ export default function GymDetailPage() {
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-900">
-            {gym.imageUrl && !imgError ? (
-              <img src={gym.imageUrl} alt={gym.name} onError={() => setImgError(true)} className="h-full w-full object-cover" />
+            {coverSrc && !imgError ? (
+              <img src={coverSrc} alt={gym.name} onError={() => setImgError(true)} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-grid">
                 <Dumbbell className="h-16 w-16 text-zinc-700" aria-hidden="true" />

@@ -28,41 +28,64 @@ enum UserStatus {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  name          String
-  email         String       @unique
-  passwordHash  String
-  role          Role         @default(USER)
-  status        UserStatus   @default(ACTIVE)
-  lastLoginAt   DateTime?
-  deletedAt     DateTime?
-  emailVerifiedAt DateTime?
-  phoneVerifiedAt DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  gyms          Gym[]
-  resetToken    String?      @unique
+  id               String     @id @default(cuid())
+  name             String
+  email            String     @unique
+  passwordHash     String
+  role             Role       @default(USER)
+  status           UserStatus @default(ACTIVE)
+  lastLoginAt      DateTime?
+  deletedAt        DateTime?
+  emailVerifiedAt  DateTime?
+  phoneVerifiedAt  DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  gyms             Gym[]
+  resetToken       String?    @unique
   resetTokenExpiry DateTime?
 }
 
 model Gym {
-  id              String             @id @default(cuid())
+  id              String           @id @default(cuid())
   ownerId         String
-  owner           User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   name            String
   description     String?
   address         String
   city            String
+  state           String?
+  pincode         String?
+  latitude        Float?
+  longitude       Float?
   phone           String?
   email           String?
+  website         String?
+  facilities      String[]         @default([])
+  services        String[]         @default([])
+  openingTime     String?
+  closingTime     String?
   imageUrl        String?
-  status          GymStatus          @default(PENDING)
+  status          GymStatus        @default(PENDING)
   verifiedAt      DateTime?
   deletedAt       DateTime?
   internalNotes   String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  rejectionReason String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   membershipPlans MembershipPlan[]
+  images          GymImage[]
+}
+
+model GymImage {
+  id        String   @id @default(cuid())
+  gymId     String
+  gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  url       String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gymId])
 }
 
 model MembershipPlan {

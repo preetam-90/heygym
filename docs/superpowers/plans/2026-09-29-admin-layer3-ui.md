@@ -2,17 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the complete SaaS admin shell and all management sections in `heygym-admin`, every control wired to a Layer 1–2 API.
+**Goal:** Build the complete SaaS admin shell and all management sections in `admin/`, every control wired to a Layer 1–2 API.
 
 **Architecture:** App Router routes per section sharing the existing `lib/api.ts` + `AuthProvider` pattern; a sidebar shell layout with global search, notifications, and quick actions; charts with selectable ranges backed by stats endpoints.
 
-**Tech Stack:** Next.js 14, React 18, Tailwind 3, TypeScript 5 (repo: `/home/preetam/Downloads/Gym/heygym-admin/`, port 3001).
+**Tech Stack:** Next.js 14, React 18, Tailwind 3, TypeScript 5 (repo: `/home/preetam/Downloads/Gym/gym-platform/admin/`, port 3001).
 
 **Spec:** `docs/superpowers/specs/2026-09-29-complete-admin-panel-design.md` (Sections 3–4)
 
 ## Global Constraints
 
-- Work only in `/home/preetam/Downloads/Gym/heygym-admin/` (own repo); same backend only (`NEXT_PUBLIC_API_URL`).
+- Work only in `admin/` inside the gym-platform repo; same backend only (`NEXT_PUBLIC_API_URL`).
 - ADMIN-only pages via existing guard; every destructive action needs a confirmation dialog, and reject/suspend/ban/refund/hold need a reason field.
 - Every control calls a real Layer 1–2 endpoint — no mock buttons; if an endpoint is missing, stop and report instead of faking it.
 - Dark volt theme (`bg #09090B`, accent `#D4FF4F`); loading/empty/error states on every data view.
@@ -30,8 +30,8 @@
 ### Task 1: SaaS shell (sidebar, search, quick actions)
 
 **Files:**
-- Create: `heygym-admin/components/admin-shell.tsx`, `heygym-admin/components/global-search.tsx`, `heygym-admin/components/quick-actions.tsx`
-- Modify: `heygym-admin/app/layout.tsx`
+- Create: `admin/components/admin-shell.tsx`, `admin/components/global-search.tsx`, `admin/components/quick-actions.tsx`
+- Modify: `admin/app/layout.tsx`
 - Test: `npm run build` + smoke
 
 **Interfaces:**
@@ -41,7 +41,7 @@
 - [ ] **Step 1: Write the failing check**
 
 ```bash
-[ -f /home/preetam/Downloads/Gym/heygym-admin/components/admin-shell.tsx ] && echo "shell exists" || echo "shell missing"
+[ -f /home/preetam/Downloads/Gym/gym-platform/admin/components/admin-shell.tsx ] && echo "shell exists" || echo "shell missing"
 ```
 
 - [ ] **Step 2: Run check to verify it fails**
@@ -55,20 +55,20 @@ Sidebar links: Dashboard, Users, Gym Owners, Gyms, Approvals, Plans, Bookings, P
 
 - [ ] **Step 4: Run verification**
 
-Run: `cd heygym-admin && npm run build`; search `gym@admin.com` returns grouped hits; quick action opens the pending queue.
+Run: `cd admin && npm run build`; search `gym@admin.com` returns grouped hits; quick action opens the pending queue.
 Expected: build passes; grouped search results (Review Focus line 3 pinned here).
 
-- [ ] **Step 5: Commit** (in heygym-admin repo)
+- [ ] **Step 5: Commit** (in gym-platform repo)
 
 ```bash
-git add components/admin-shell.tsx components/global-search.tsx components/quick-actions.tsx app/layout.tsx
+git add admin/components/admin-shell.tsx admin/components/global-search.tsx admin/components/quick-actions.tsx admin/app/layout.tsx
 git commit -m "feat(admin): add SaaS shell with global search and quick actions"
 ```
 
 ### Task 2: Dashboard + analytics charts
 
 **Files:**
-- Create: `heygym-admin/app/(dashboard)/page.tsx`, `heygym-admin/components/stat-card.tsx`, `heygym-admin/components/range-chart.tsx`, `heygym-admin/components/recent-activity.tsx`
+- Create: `admin/app/(dashboard)/page.tsx`, `admin/components/stat-card.tsx`, `admin/components/range-chart.tsx`, `admin/components/recent-activity.tsx`
 - Test: build + range-switch check
 
 **Interfaces:**
@@ -78,7 +78,7 @@ git commit -m "feat(admin): add SaaS shell with global search and quick actions"
 - [ ] **Step 1: Write the failing check**
 
 ```bash
-grep -rq "range-chart\|RangeChart" /home/preetam/Downloads/Gym/heygym-admin/components/ 2>/dev/null && echo "charts exist" || echo "charts missing"
+grep -rq "range-chart\|RangeChart" /home/preetam/Downloads/Gym/gym-platform/admin/components/ 2>/dev/null && echo "charts exist" || echo "charts missing"
 ```
 
 - [ ] **Step 2: Run check to verify it fails**
@@ -98,15 +98,15 @@ Expected: build passes; refetch observed (Review Focus line 5 pinned here).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add "app/(dashboard)/" components/stat-card.tsx components/range-chart.tsx components/recent-activity.tsx
+git add admin/"app/(dashboard)/" admin/components/stat-card.tsx admin/components/range-chart.tsx admin/components/recent-activity.tsx
 git commit -m "feat(admin): add dashboard with analytics charts"
 ```
 
 ### Task 3: Users, owners, gyms, approvals, plans
 
 **Files:**
-- Create: `heygym-admin/app/users/[id]/page.tsx`, `heygym-admin/app/owners/`, `heygym-admin/app/gyms/[id]/page.tsx`, `heygym-admin/app/approvals/page.tsx`, `heygym-admin/app/plans/page.tsx`, `heygym-admin/components/confirm-dialog.tsx`
-- Modify: extend `heygym-admin/lib/api.ts`, existing users/gyms pages.
+- Create: `admin/app/users/[id]/page.tsx`, `admin/app/owners/`, `admin/app/gyms/[id]/page.tsx`, `admin/app/approvals/page.tsx`, `admin/app/plans/page.tsx`, `admin/components/confirm-dialog.tsx`
+- Modify: extend `admin/lib/api.ts`, existing users/gyms pages.
 - Test: build + action roundtrips
 
 **Interfaces:**
@@ -116,7 +116,7 @@ git commit -m "feat(admin): add dashboard with analytics charts"
 - [ ] **Step 1: Write the failing check**
 
 ```bash
-[ -f /home/preetam/Downloads/Gym/heygym-admin/app/approvals/page.tsx ] && echo "approvals exists" || echo "approvals missing"
+[ -f /home/preetam/Downloads/Gym/gym-platform/admin/app/approvals/page.tsx ] && echo "approvals exists" || echo "approvals missing"
 ```
 
 - [ ] **Step 2: Run check to verify it fails**
@@ -136,14 +136,14 @@ Expected: build passes; state changes persist via API; Escape cancels (Review Fo
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/users app/owners app/gyms app/approvals app/plans components/confirm-dialog.tsx lib/api.ts
+git add admin/app/users admin/app/owners admin/app/gyms admin/app/approvals admin/app/plans admin/components/confirm-dialog.tsx admin/lib/api.ts
 git commit -m "feat(admin): add users, owners, gyms, approvals, and plans management"
 ```
 
 ### Task 4: Bookings, payments, payouts, commission
 
 **Files:**
-- Create: `heygym-admin/app/bookings/`, `heygym-admin/app/payments/`, `heygym-admin/app/payouts/`, `heygym-admin/app/commission/page.tsx`
+- Create: `admin/app/bookings/`, `admin/app/payments/`, `admin/app/payouts/`, `admin/app/commission/page.tsx`
 - Test: build + money-flow roundtrip
 
 **Interfaces:**
@@ -153,7 +153,7 @@ git commit -m "feat(admin): add users, owners, gyms, approvals, and plans manage
 - [ ] **Step 1: Write the failing check**
 
 ```bash
-ls -d /home/preetam/Downloads/Gym/heygym-admin/app/bookings /home/preetam/Downloads/Gym/heygym-admin/app/payouts 2>/dev/null || echo "money sections missing"
+ls -d /home/preetam/Downloads/Gym/gym-platform/admin/app/bookings /home/preetam/Downloads/Gym/gym-platform/admin/app/payouts 2>/dev/null || echo "money sections missing"
 ```
 
 - [ ] **Step 2: Run check to verify it fails**
@@ -173,14 +173,14 @@ Expected: build passes; ledger entries correct; math matches backend.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/bookings app/payments app/payouts app/commission
+git add admin/app/bookings admin/app/payments admin/app/payouts admin/app/commission
 git commit -m "feat(admin): add bookings, payments, payouts, and commission"
 ```
 
 ### Task 5: Moderation, messaging, content, admins, audit, settings
 
 **Files:**
-- Create: `heygym-admin/app/reviews/`, `heygym-admin/app/enquiries/`, `heygym-admin/app/reports/`, `heygym-admin/app/notifications/`, `heygym-admin/app/content/`, `heygym-admin/app/admins/`, `heygym-admin/app/audit-logs/`, `heygym-admin/app/settings/`
+- Create: `admin/app/reviews/`, `admin/app/enquiries/`, `admin/app/reports/`, `admin/app/notifications/`, `admin/app/content/`, `admin/app/admins/`, `admin/app/audit-logs/`, `admin/app/settings/`
 - Test: build + moderation roundtrip
 
 **Interfaces:**
@@ -190,7 +190,7 @@ git commit -m "feat(admin): add bookings, payments, payouts, and commission"
 - [ ] **Step 1: Write the failing check**
 
 ```bash
-ls -d /home/preetam/Downloads/Gym/heygym-admin/app/audit-logs /home/preetam/Downloads/Gym/heygym-admin/app/settings 2>/dev/null || echo "ops sections missing"
+ls -d /home/preetam/Downloads/Gym/gym-platform/admin/app/audit-logs /home/preetam/Downloads/Gym/gym-platform/admin/app/settings 2>/dev/null || echo "ops sections missing"
 ```
 
 - [ ] **Step 2: Run check to verify it fails**
@@ -210,7 +210,7 @@ Expected: build passes; partial-failure summary correct (Review Focus line 4 pin
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/reviews app/enquiries app/reports app/notifications app/content app/admins app/audit-logs app/settings
+git add admin/app/reviews admin/app/enquiries admin/app/reports admin/app/notifications admin/app/content admin/app/admins admin/app/audit-logs admin/app/settings
 git commit -m "feat(admin): add moderation, messaging, admins, audit, and settings"
 ```
 
@@ -238,7 +238,7 @@ Any failure becomes a fix commit (same repo conventions) or a filed issue with r
 
 - [ ] **Step 4: Run verification**
 
-Run: full checklist green; `npm run build` in heygym-admin; `npx tsc --noEmit` in backend.
+Run: full checklist green; `npm run build` in admin; `npx tsc --noEmit` in backend.
 Expected: all green.
 
 - [ ] **Step 5: Commit** (only if fixes landed)

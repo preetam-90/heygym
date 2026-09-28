@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-white/10;
+  }
+  html {
+    @apply bg-[#09090B];
+  }
+  body {
+    @apply bg-[#09090B] text-zinc-100 antialiased;
+  }
+  ::selection {
+    background: #D4FF4F;
+    color: #09090B;
+  }
+  :focus-visible {
+    outline: 2px solid #D4FF4F;
+    outline-offset: 2px;
+  }
+}

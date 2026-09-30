@@ -19,4 +19,11 @@ export const usersRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: fastify.authenticate,
     handler: usersController.updateProfile.bind(usersController),
   });
+
+  fastify.route({
+    method: 'POST',
+    url: '/me/avatar',
+    preHandler: fastify.authenticate,
+    handler: usersController.uploadAvatar.bind(usersController),
+  });
 };

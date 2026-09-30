@@ -108,8 +108,8 @@ export default function AdminDashboardPage() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D4FF4F]">Control</p><h1 className="mt-1 font-display text-4xl font-bold uppercase tracking-tight text-white">Admin Dashboard</h1>
-          <p className="text-zinc-400">Platform overview and management</p>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Control</p><h1 className="mt-1.5 font-display text-4xl font-semibold tracking-[-0.02em] text-white">Admin dashboard</h1>
+          <p className="mt-1.5 text-[14px] text-zinc-400">Platform overview and management</p>
         </div>
         <Button variant="outline" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />

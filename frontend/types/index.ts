@@ -1,6 +1,6 @@
 export type Role = 'USER' | 'GYM_OWNER' | 'ADMIN';
 
-export type GymStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type GymStatus = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
 
 export interface User {
   id: string;
@@ -18,14 +18,34 @@ export interface Gym {
   description: string | null;
   address: string;
   city: string;
+  state: string | null;
+  pincode: string | null;
+  latitude: number | null;
+  longitude: number | null;
   phone: string | null;
   email: string | null;
+  website: string | null;
+  facilities: string[];
+  services: string[];
+  openingTime: string | null;
+  closingTime: string | null;
   imageUrl: string | null;
   status: GymStatus;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
   owner?: User;
   membershipPlans?: MembershipPlan[];
+  images?: GymImage[];
+}
+
+export interface GymImage {
+  id: string;
+  gymId: string;
+  url: string;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MembershipPlan {

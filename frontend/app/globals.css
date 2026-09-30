@@ -2,41 +2,129 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* HeyGym Discovery (Stitch source of truth) */
+  --bg-base: #121416;
+  --bg-raised: #1a1c1e;
+  --bg-card: #1e2022;
+  --bg-overlay: #0c0e10;
+  --hairline: #2c3440;
+  --hairline-strong: #374151;
+  --accent: #caf300;
+  --accent-ink: #171e00;
+  --accent-soft: rgba(202, 243, 0, 0.08);
+  --accent-line: rgba(202, 243, 0, 0.22);
+  color-scheme: dark;
+}
+
 @layer base {
   * {
     @apply border-white/10;
+    border-color: var(--hairline);
   }
   html {
-    @apply bg-[#09090B];
+    @apply bg-[#0A0A0B];
+    text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-[#09090B] text-zinc-100 antialiased;
+    @apply bg-[#0A0A0B] text-zinc-100 antialiased;
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.006em;
   }
   ::selection {
-    background: #D4FF4F;
-    color: #09090B;
+    background: #d4ff4f;
+    color: #0a0a0b;
   }
   :focus-visible {
-    outline: 2px solid #D4FF4F;
-    outline-offset: 2px;
+    outline: 2px solid #d4ff4f;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  /* Refined scrollbar — premium detail */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0a0b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #26262b;
+    border-radius: 8px;
+    border: 2px solid #0a0a0b;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #343439;
   }
 }
 
 @layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
   .text-outline {
-    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.15);
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.12);
     color: transparent;
   }
   .bg-grid {
     background-image:
-      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
     background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, black 40%, transparent 100%);
+  }
+  /* Signature: hairline + tint elevation (not flat border) */
+  .surface-premium {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)), #141417;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.05) inset,
+      0 12px 32px rgba(0, 0, 0, 0.45),
+      0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .surface-raised {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)), #101013;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 20px 50px rgba(0, 0, 0, 0.5);
+  }
+  .accent-tint {
+    background: linear-gradient(180deg, rgba(212, 255, 79, 0.12), rgba(212, 255, 79, 0.05));
+    border: 1px solid rgba(212, 255, 79, 0.22);
+    box-shadow:
+      0 1px 0 rgba(212, 255, 79, 0.15) inset,
+      0 8px 28px rgba(212, 255, 79, 0.08);
+  }
+  .hairline-top {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .card-lift {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), border-color 220ms ease, box-shadow 220ms ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 20px 50px rgba(0, 0, 0, 0.55);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;

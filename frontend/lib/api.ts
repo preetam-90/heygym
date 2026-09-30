@@ -1,4 +1,4 @@
-import type { ApiResponse, AuthResponse, User, Gym, MembershipPlan } from '@/types';
+import type { ApiResponse, AuthResponse, User, Gym, GymImage, MembershipPlan } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
@@ -237,6 +237,73 @@ class ApiClient {
     return response.data!.gym;
   }
 
+  async submitGym(id: string): Promise<Gym> {
+    const response = await this.request<{ gym: Gym }>(`/gyms/${id}/submit`, {
+      method: 'POST',
+    });
+    return response.data!.gym;
+  }
+
+  async uploadGymPhoto(gymId: string, file: File): Promise<GymImage> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const headers: Record<string, string> = {};
+    const token = this.getAccessToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/gyms/${gymId}/photos`, {
+        method: 'POST',
+        headers,
+        body: formData,
+        credentials: 'include',
+      });
+    } catch {
+      throw new Error('Unable to connect to the server. Please check your connection and try again.');
+    }
+    let data: ApiResponse<{ photo: GymImage }>;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Received an invalid response from the server. Please try again.');
+    }
+    if (!response.ok) {
+      const message =
+        typeof data?.error?.message === 'string' && data.error.message.length > 0
+          ? data.error.message
+          : 'Photo upload failed. Please try again.';
+      throw new Error(message);
+    }
+    return data.data!.photo;
+  }
+
+  async deleteGymPhoto(gymId: string, photoId: string): Promise<void> {
+    await this.request(`/gyms/${gymId}/photos/${photoId}`, { method: 'DELETE' });
+  }
+
+  async setPrimaryPhoto(gymId: string, photoId: string): Promise<GymImage> {
+    const response = await this.request<{ photo: GymImage }>(`/gyms/${gymId}/photos/${photoId}/primary`, {
+      method: 'PATCH',
+    });
+    return response.data!.photo;
+  }
+
+  async getProfile(): Promise<User> {
+    const response = await this.request<{ user: User }>('/users/me');
+    return response.data!.user;
+  }
+
+  async updateProfile(data: { name?: string; email?: string }): Promise<User> {
+    const response = await this.request<{ user: User }>('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    if (response.data) {
+      writeStorage('user', JSON.stringify(response.data.user));
+    }
+    return response.data!.user;
+  }
+
   async getMembershipPlans(gymId: string): Promise<MembershipPlan[]> {
     const response = await this.request<{ plans: MembershipPlan[] }>(`/gyms/${gymId}/membership-plans`);
     return response.data!.plans;
@@ -256,6 +323,10 @@ class ApiClient {
       body: JSON.stringify(data),
     });
     return response.data!.plan;
+  }
+
+  async deleteMembershipPlan(gymId: string, planId: string): Promise<void> {
+    await this.request(`/gyms/${gymId}/membership-plans/${planId}`, { method: 'DELETE' });
   }
 
   async getUsers(): Promise<User[]> {

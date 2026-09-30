@@ -32,3 +32,6 @@ coverage/
 
 # Generated tooling output
 repomix-output.xml
+
+# SDD worktrees (scratch)
+.worktrees/

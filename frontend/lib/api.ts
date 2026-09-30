@@ -1,4 +1,15 @@
-import type { ApiResponse, AuthResponse, User, Gym, GymImage, MembershipPlan } from '@/types';
+import type {
+  AdminStats,
+  ApiResponse,
+  AuthResponse,
+  User,
+  Gym,
+  GymImage,
+  GymSearchMeta,
+  GymSearchParams,
+  GymSearchResult,
+  MembershipPlan,
+} from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
@@ -211,6 +222,28 @@ class ApiClient {
     return response.data!.gyms;
   }
 
+  /** Server-side directory search: text, city, facilities, price, sort, paging, geo. */
+  async searchGyms(params: GymSearchParams = {}): Promise<GymSearchResult> {
+    const query = new URLSearchParams();
+    if (params.q) query.set('q', params.q);
+    if (params.city) query.set('city', params.city);
+    for (const facility of params.facilities ?? []) query.append('facilities', facility);
+    if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
+    if (params.sort) query.set('sort', params.sort);
+    if (params.page != null) query.set('page', String(params.page));
+    if (params.pageSize != null) query.set('pageSize', String(params.pageSize));
+    if (params.lat != null) query.set('lat', String(params.lat));
+    if (params.lng != null) query.set('lng', String(params.lng));
+    if (params.radiusKm != null) query.set('radiusKm', String(params.radiusKm));
+
+    const suffix = query.toString();
+    const response = await this.request<{ gyms: (Gym & { distanceKm?: number })[]; meta: GymSearchMeta }>(
+      `/gyms${suffix ? `?${suffix}` : ''}`,
+    );
+    const data = response.data!;
+    return { ...data.meta, gyms: data.gyms };
+  }
+
   async getGymById(id: string): Promise<Gym> {
     const response = await this.request<{ gym: Gym }>(`/gyms/${id}`);
     return response.data!.gym;
@@ -339,8 +372,8 @@ class ApiClient {
     return response.data!.gyms;
   }
 
-  async getStats(): Promise<{ totalUsers: number; totalGyms: number; pendingGyms: number; approvedGyms: number; rejectedGyms: number }> {
-    const response = await this.request<{ stats: any }>('/admin/stats');
+  async getStats(): Promise<AdminStats> {
+    const response = await this.request<{ stats: AdminStats }>('/admin/stats');
     return response.data!.stats;
   }
 

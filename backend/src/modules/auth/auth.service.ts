@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma';
 import argon2 from 'argon2';
+import { createHash, randomUUID } from 'crypto';
 import { FastifyInstance } from 'fastify';
 import { RegisterInput, LoginInput, ForgotPasswordInput, ResetPasswordInput } from './auth.schema';
 import { writeAudit } from '../../lib/audit';
@@ -45,6 +46,50 @@ function clearLoginThrottle(key: string) {
   loginAttempts.delete(key);
 }
 
+/**
+ * Consume one throttle slot for a failed attempt, auditing when the limit
+ * trips. Auditing is best-effort — an audit failure must never change the
+ * throttle decision — and the original throttle error is always rethrown.
+ */
+async function consumeLoginThrottle(key: string, email: string, ip?: string) {
+  try {
+    checkLoginThrottle(key);
+  } catch (err) {
+    try {
+      await writeAudit({
+        action: 'auth.login_throttled',
+        targetType: 'User',
+        reason: email.trim().toLowerCase(),
+        ip: ip ?? null,
+      });
+    } catch {
+      // Audit failure must never change the throttle decision.
+    }
+    throw err;
+  }
+}
+
+/** Record a failed login without ever letting audit problems affect auth. */
+async function auditLoginFailure(opts: {
+  actorId?: string;
+  targetId?: string;
+  reason?: string;
+  ip?: string;
+}) {
+  try {
+    await writeAudit({
+      actorId: opts.actorId ?? null,
+      action: 'auth.login_failed',
+      targetType: 'User',
+      targetId: opts.targetId ?? null,
+      reason: opts.reason ?? null,
+      ip: opts.ip ?? null,
+    });
+  } catch {
+    // Audit failure must never change the auth decision.
+  }
+}
+
 export class AuthService {
   constructor(private fastify: FastifyInstance) {}
 
@@ -57,6 +102,11 @@ export class AuthService {
       throw new Error('Email already registered');
     }
 
+    if ((input as { phone?: string }).phone) {
+      const existingPhone = await prisma.user.findUnique({ where: { phone: (input as { phone?: string }).phone! } }).catch(() => null);
+      if (existingPhone) throw new Error('Phone already registered');
+    }
+
     const passwordHash = await argon2.hash(input.password);
 
     const user = await prisma.user.create({
@@ -64,12 +114,16 @@ export class AuthService {
         name: input.name,
         email: input.email,
         passwordHash,
+        // Role is trusted server-side: schema only allows USER/GYM_OWNER, never ADMIN
         role: input.role,
+        ...((input as { phone?: string }).phone ? { phone: (input as { phone?: string }).phone } : {}),
       },
       select: {
         id: true,
         name: true,
         email: true,
+        phone: true,
+        avatarUrl: true,
         role: true,
         createdAt: true,
       },
@@ -89,62 +143,18 @@ export class AuthService {
     });
 
     if (!user) {
-      try {
-        checkLoginThrottle(key);
-      } catch (err) {
-        try {
-          await writeAudit({
-            action: 'auth.login_throttled',
-            targetType: 'User',
-            reason: input.email.trim().toLowerCase(),
-            ip: opts?.ip ?? null,
-          });
-        } catch {
-          // Audit failure must never change the throttle decision.
-        }
-        throw err;
-      }
-      try {
-        await writeAudit({
-          action: 'auth.login_failed',
-          targetType: 'User',
-          reason: `unknown email: ${input.email.trim().toLowerCase()}`,
-          ip: opts?.ip ?? null,
-        });
-      } catch {
-        // Audit failure must never change the auth decision.
-      }
+      await consumeLoginThrottle(key, input.email, opts?.ip);
+      await auditLoginFailure({
+        reason: `unknown email: ${input.email.trim().toLowerCase()}`,
+        ip: opts?.ip,
+      });
       throw new Error('Invalid credentials');
     }
 
     const isValid = await argon2.verify(user.passwordHash, input.password);
     if (!isValid) {
-      try {
-        checkLoginThrottle(key);
-      } catch (err) {
-        try {
-          await writeAudit({
-            action: 'auth.login_throttled',
-            targetType: 'User',
-            reason: input.email.trim().toLowerCase(),
-            ip: opts?.ip ?? null,
-          });
-        } catch {
-          // Audit failure must never change the throttle decision.
-        }
-        throw err;
-      }
-      try {
-        await writeAudit({
-          actorId: user.id,
-          action: 'auth.login_failed',
-          targetType: 'User',
-          targetId: user.id,
-          ip: opts?.ip ?? null,
-        });
-      } catch {
-        // Audit failure must never change the auth decision.
-      }
+      await consumeLoginThrottle(key, input.email, opts?.ip);
+      await auditLoginFailure({ actorId: user.id, targetId: user.id, ip: opts?.ip });
       throw new Error('Invalid credentials');
     }
 
@@ -167,21 +177,7 @@ export class AuthService {
       );
     }
 
-    try {
-      checkLoginThrottle(key);
-    } catch (err) {
-      try {
-        await writeAudit({
-          action: 'auth.login_throttled',
-          targetType: 'User',
-          reason: input.email.trim().toLowerCase(),
-          ip: opts?.ip ?? null,
-        });
-      } catch {
-        // Audit failure must never change the throttle decision.
-      }
-      throw err;
-    }
+    await consumeLoginThrottle(key, input.email, opts?.ip);
     clearLoginThrottle(key);
     const updated = await prisma.user.update({
       where: { id: user.id },
@@ -197,12 +193,46 @@ export class AuthService {
       { expiresIn: '15m' }
     );
 
-    const refreshToken = (this.fastify as any).jwt.refresh.sign(
-      { id: user.id, email: user.email, role: user.role },
+    const refreshToken = (this.fastify as unknown as { jwt: { refresh: { sign: (p: unknown, o: unknown) => string } } }).jwt.refresh.sign(
+      { id: user.id, email: user.email, role: user.role, jti: randomUUID() },
       { expiresIn: '7d' }
     );
 
     return { accessToken, refreshToken };
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  async createSession(userId: string, refreshToken: string, opts?: { ip?: string; userAgent?: string }) {
+    const tokenHash = this.hashToken(refreshToken);
+    await prisma.refreshSession.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ip: opts?.ip,
+        userAgent: opts?.userAgent,
+      },
+    });
+    // Opportunistic cleanup: delete expired sessions for this user
+    await prisma.refreshSession.deleteMany({ where: { userId, expiresAt: { lt: new Date() } } }).catch(() => null);
+  }
+
+  async revokeSession(refreshToken: string) {
+    try {
+      await prisma.refreshSession.update({
+        where: { tokenHash: this.hashToken(refreshToken) },
+        data: { revokedAt: new Date() },
+      });
+    } catch {
+      // already gone / never existed — logout is idempotent
+    }
+  }
+
+  async revokeAllForUser(userId: string) {
+    await prisma.refreshSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
   }
 
   setTokenCookies(reply: any, accessToken: string, refreshToken: string) {
@@ -235,7 +265,11 @@ export class AuthService {
         id: true,
         name: true,
         email: true,
+        phone: true,
+        avatarUrl: true,
         role: true,
+        status: true,
+        isActive: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -246,7 +280,12 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string) {
     try {
-      const decoded = (this.fastify as any).jwt.refresh.verify(refreshToken);
+      const decoded = (this.fastify as unknown as { jwt: { refresh: { verify: (t: string) => { id: string } } } }).jwt.refresh.verify(refreshToken);
+      const tokenHash = this.hashToken(refreshToken);
+      const session = await prisma.refreshSession.findUnique({ where: { tokenHash } });
+      if (!session || session.revokedAt || session.expiresAt < new Date()) {
+        throw new Error('Invalid refresh token');
+      }
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
       });
@@ -262,11 +301,15 @@ export class AuthService {
         );
       }
 
-      return this.generateTokens({
+      // Rotation: revoke old session, issue new pair
+      await prisma.refreshSession.update({ where: { tokenHash }, data: { revokedAt: new Date() } }).catch(() => null);
+      const tokens = this.generateTokens({
         id: user.id,
         email: user.email,
         role: user.role,
       });
+      await this.createSession(user.id, tokens.refreshToken);
+      return tokens;
     } catch (e) {
       if (e instanceof AccountBlockedError) throw e;
       throw new Error('Invalid refresh token');

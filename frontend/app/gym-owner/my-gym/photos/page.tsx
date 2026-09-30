@@ -127,7 +127,7 @@ export default function GymPhotosPage() {
     return (
       <div className="container px-4 py-16">
         <div className="flex justify-center" role="status" aria-label="Loading">
-          <Loader2 className="h-8 w-8 animate-spin text-[#D4FF4F]" />
+          <Loader2 className="h-8 w-8 animate-spin text-volt" />
         </div>
       </div>
     );
@@ -138,7 +138,7 @@ export default function GymPhotosPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <Link href="/gym-owner/dashboard" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-[#D4FF4F]">
+      <Link href="/gym-owner/dashboard" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-volt">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Back to Dashboard
       </Link>
@@ -151,7 +151,7 @@ export default function GymPhotosPage() {
         </div>
         <label
           htmlFor="gym-photos-input"
-          className={`inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center rounded-[10px] bg-[#D4FF4F] px-5 text-sm font-semibold text-[#0A0F00] transition-colors hover:bg-[#e2ff7a] ${uploading || photos.length >= 10 ? 'pointer-events-none opacity-50' : ''}`}
+          className={`inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center rounded-[10px] bg-volt px-5 text-sm font-semibold text-volt-ink transition-colors hover:bg-volt-bright ${uploading || photos.length >= 10 ? 'pointer-events-none opacity-50' : ''}`}
         >
           {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
           Upload Photos
@@ -168,7 +168,7 @@ export default function GymPhotosPage() {
       />
 
       {uploadProgress && (
-        <div className="mt-6 flex items-center gap-3 rounded-lg border border-[#D4FF4F]/30 bg-[#D4FF4F]/10 p-4 text-sm text-[#D4FF4F]" role="status">
+        <div className="mt-6 flex items-center gap-3 rounded-lg border border-volt/30 bg-volt/10 p-4 text-sm text-volt" role="status">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           {uploadProgress}
         </div>
@@ -194,7 +194,7 @@ export default function GymPhotosPage() {
             </p>
             <label
               htmlFor="gym-photos-input"
-              className="mt-4 inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center rounded-[10px] bg-[#D4FF4F] px-5 text-sm font-semibold text-[#0A0F00] transition-colors hover:bg-[#e2ff7a]"
+              className="mt-4 inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center rounded-[10px] bg-volt px-5 text-sm font-semibold text-volt-ink transition-colors hover:bg-volt-bright"
             >
               <Upload className="mr-2 h-4 w-4" />
               Upload Photos
@@ -214,7 +214,7 @@ export default function GymPhotosPage() {
                     <img src={src} alt="Gym photo" className="h-full w-full object-cover" loading="lazy" />
                   )}
                   {photo.isPrimary && (
-                    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#D4FF4F] px-2 py-1 text-xs font-bold text-black">
+                    <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-volt px-2 py-1 text-xs font-bold text-black">
                       <Star className="h-3 w-3" aria-hidden="true" />
                       Primary
                     </span>

@@ -6,30 +6,39 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "db:push": "prisma db push"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "db:push": "prisma db push",
+    "test": "vitest run"
   },
   "dependencies": {
     "@fastify/cookie": "^9.3.1",
     "@fastify/cors": "^9.0.1",
+    "@fastify/helmet": "^11.1.1",
     "@fastify/jwt": "^8.0.0",
     "@fastify/multipart": "^8.3.1",
+    "@fastify/rate-limit": "^9.1.0",
     "@fastify/static": "^7.0.4",
     "@prisma/client": "^5.10.0",
     "argon2": "^0.31.2",
+    "dotenv": "^18.0.4",
     "fastify": "^4.26.0",
     "fastify-plugin": "^6.0.0",
     "fastify-zod": "^1.4.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^22.20.4",
     "prisma": "^5.10.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^3.2.7"
   },
   "allowScripts": {
     "argon2@0.31.2": true

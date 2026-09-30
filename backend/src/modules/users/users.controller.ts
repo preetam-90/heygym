@@ -7,7 +7,7 @@ export class UsersController {
 
   async getProfile(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const user = await this.usersService.getProfile((request.user as any).id);
+      const user = await this.usersService.getProfile(request.user.id);
       return reply.send({ success: true, data: { user } });
     } catch (error) {
       return reply.status(500).send({
@@ -21,7 +21,7 @@ export class UsersController {
     try {
       // PATCH /me has no :id param — the authenticated user may only ever
       // update their own profile, taken from the verified token.
-      const userId = (request.user as any).id;
+      const userId = request.user.id;
       const user = await this.usersService.updateProfile(userId, request.body);
       return reply.send({ success: true, data: { user } });
     } catch (error) {

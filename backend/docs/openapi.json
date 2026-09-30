@@ -1,0 +1,38 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "HeyGym API", "version": "1.0.0", "description": "Gym discovery marketplace: auth, owner gym management, admin approval, discovery, favorites, enquiries, reviews, notifications." },
+  "servers": [{ "url": "http://localhost:4000/api/v1" }],
+  "paths": {
+    "/health": { "get": { "summary": "Health", "responses": { "200": { "description": "ok" } } } },
+    "/auth/register": { "post": { "summary": "Register USER/GYM_OWNER (ADMIN blocked)", "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "email": { "type": "string" }, "phone": { "type": "string" }, "password": { "type": "string", "description": "min 8 chars" }, "role": { "type": "string", "enum": ["USER", "GYM_OWNER"] } } } } } }, "responses": { "201": { "description": "created" } } } },
+    "/auth/login": { "post": { "summary": "Login, sets HttpOnly cookies + returns tokens for mobile", "responses": { "200": { "description": "ok" } } } },
+    "/auth/logout": { "post": { "summary": "Logout revokes refresh session", "responses": { "200": { "description": "ok" } } } },
+    "/auth/refresh": { "post": { "summary": "Rotate refresh token", "responses": { "200": { "description": "ok" } } } },
+    "/auth/me": { "get": { "summary": "Current user", "responses": { "200": { "description": "ok" } } } },
+    "/gyms": {
+      "get": { "summary": "Public discovery (APPROVED only)", "parameters": [{ "name": "q", "in": "query", "schema": { "type": "string" } }, { "name": "city", "in": "query", "schema": { "type": "string" } }, { "name": "facilities", "in": "query", "schema": { "type": "string", "description": "comma slugs" } }, { "name": "minPrice", "in": "query", "schema": { "type": "number" } }, { "name": "maxPrice", "in": "query", "schema": { "type": "number" } }, { "name": "minRating", "in": "query", "schema": { "type": "number" } }, { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["nearest", "rating", "price_low", "price_high", "newest"] } }, { "name": "page", "in": "query", "schema": { "type": "integer" } }, { "name": "pageSize", "in": "query", "schema": { "type": "integer", "maximum": 100 } }, { "name": "lat", "in": "query", "schema": { "type": "number" } }, { "name": "lng", "in": "query", "schema": { "type": "number" } }, { "name": "radius", "in": "query", "schema": { "type": "number" } }], "responses": { "200": { "description": "paginated gyms with averageRating, reviewCount, distanceKm" } } },
+      "post": { "summary": "Owner create gym (DRAFT)", "responses": { "201": { "description": "created" } } }
+    },
+    "/gyms/{id}": { "get": { "summary": "Gym detail by id or slug", "responses": { "200": { "description": "gym + photos + facilities + plans + hours + ratings" } } }, "patch": { "summary": "Owner update own gym", "responses": { "200": { "description": "ok" } } }, "delete": { "summary": "Owner delete", "responses": { "200": { "description": "ok" } } } },
+    "/gyms/{id}/submit": { "post": { "summary": "DRAFT -> PENDING_APPROVAL", "responses": { "200": { "description": "ok" } } } },
+    "/gyms/{id}/facilities": { "post": { "summary": "Link facility (facilityId/slug or facilityIds[])", "responses": { "201": { "description": "ok" } } } },
+    "/gyms/{id}/facilities/{facilityId}": { "delete": { "summary": "Unlink facility", "responses": { "200": { "description": "ok" } } } },
+    "/gyms/{id}/hours": { "get": { "summary": "Get hours", "responses": { "200": { "description": "ok" } } }, "put": { "summary": "Owner set hours [{dayOfWeek 0=Sun..6=Sat, openTime, closeTime, isClosed}]", "responses": { "200": { "description": "ok" } } } },
+    "/gyms/{id}/photos": { "post": { "summary": "Upload photo (multipart, 5MB, jpg/png/webp)", "responses": { "201": { "description": "created" } } } },
+    "/gyms/{id}/photos/{photoId}": { "patch": { "summary": "Update altText/sortOrder", "responses": { "200": { "description": "ok" } } }, "delete": { "summary": "Delete photo", "responses": { "200": { "description": "ok" } } } },
+    "/gyms/{id}/photos/{photoId}/primary": { "patch": { "summary": "Set primary", "responses": { "200": { "description": "ok" } } } },
+    "/gyms/{id}/membership-plans": { "get": { "summary": "List plans", "responses": { "200": { "description": "ok" } } }, "post": { "summary": "Create plan {name, price, durationDays, features[], isActive}", "responses": { "201": { "description": "created" } } } },
+    "/owner/gyms": { "get": { "summary": "Canonical owner list (alias /gyms/my kept)", "responses": { "200": { "description": "ok" } } }, "post": { "summary": "Canonical create", "responses": { "201": { "description": "created" } } } },
+    "/owner/enquiries": { "get": { "summary": "Owner inbox (own gyms only)", "responses": { "200": { "description": "ok" } } } },
+    "/admin/gyms/pending": { "get": { "summary": "Pending approvals", "responses": { "200": { "description": "ok" } } } },
+    "/admin/gyms/{id}/approve": { "post": { "summary": "Approve", "responses": { "200": { "description": "ok" } } } },
+    "/admin/gyms/{id}/reject": { "post": { "summary": "Reject -> DRAFT, reason required", "responses": { "200": { "description": "ok" } } } },
+    "/admin/gyms/{id}/suspend": { "post": { "summary": "Suspend (hidden from public)", "responses": { "200": { "description": "ok" } } } },
+    "/admin/gyms/{id}/restore": { "post": { "summary": "Restore to APPROVED/PENDING_APPROVAL", "responses": { "200": { "description": "ok" } } } },
+    "/gyms/{gymId}/enquiries": { "post": { "summary": "User sends enquiry to APPROVED gym", "responses": { "201": { "description": "created" } } } },
+    "/users/me/favorites/{gymId}": { "post": { "summary": "Add favorite (409 if dup)", "responses": { "201": { "description": "created" } } }, "delete": { "summary": "Remove favorite", "responses": { "200": { "description": "ok" } } } },
+    "/users/me/favorites": { "get": { "summary": "List favorites", "responses": { "200": { "description": "ok" } } } },
+    "/gyms/{gymId}/reviews": { "get": { "summary": "List reviews + averageRating", "responses": { "200": { "description": "ok" } } }, "post": { "summary": "Create review 1-5, one per user/gym", "responses": { "201": { "description": "created" } } } },
+    "/users/me/notifications": { "get": { "summary": "In-app notifications", "responses": { "200": { "description": "ok" } } } }
+  }
+}

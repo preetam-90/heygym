@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="border-b border-white/10">
             <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
               <span className="text-sm font-bold tracking-widest uppercase">
-                HeyGym <span className="text-[#D4FF4F]">Admin</span>
+                HeyGym <span className="text-volt">Admin</span>
               </span>
               <span className="text-xs text-zinc-500">Internal only</span>
             </nav>

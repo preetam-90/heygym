@@ -107,7 +107,7 @@ export default function AllGymsPage() {
               aria-pressed={statusFilter === status}
               className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
                 statusFilter === status
-                  ? 'bg-[#D4FF4F] text-black'
+                  ? 'bg-volt text-black'
                   : 'border border-white/10 text-zinc-400 hover:border-white/25'
               }`}
             >

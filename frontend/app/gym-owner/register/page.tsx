@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -96,8 +96,7 @@ export default function GymOwnerRegisterPage() {
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold text-white mb-4">Your Account</h3>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                <FormField id="name" label="Full Name" error={errors.name?.message}>
                   <Input
                     id="name"
                     type="text"
@@ -106,11 +105,9 @@ export default function GymOwnerRegisterPage() {
                     disabled={loading}
                     aria-invalid={!!errors.name}
                   />
-                  {errors.name && <p className="text-sm text-red-400">{errors.name.message}</p>}
-                </div>
+                </FormField>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                <FormField id="email" label="Email" error={errors.email?.message}>
                   <Input
                     id="email"
                     type="email"
@@ -119,11 +116,9 @@ export default function GymOwnerRegisterPage() {
                     disabled={loading}
                     aria-invalid={!!errors.email}
                   />
-                  {errors.email && <p className="text-sm text-red-400">{errors.email.message}</p>}
-                </div>
+                </FormField>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                <FormField id="password" label="Password" error={errors.password?.message}>
                   <Input
                     id="password"
                     type="password"
@@ -132,11 +127,9 @@ export default function GymOwnerRegisterPage() {
                     disabled={loading}
                     aria-invalid={!!errors.password}
                   />
-                  {errors.password && <p className="text-sm text-red-400">{errors.password.message}</p>}
-                </div>
+                </FormField>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <FormField id="confirmPassword" label="Confirm Password" error={errors.confirmPassword?.message}>
                   <Input
                     id="confirmPassword"
                     type="password"
@@ -145,16 +138,14 @@ export default function GymOwnerRegisterPage() {
                     disabled={loading}
                     aria-invalid={!!errors.confirmPassword}
                   />
-                  {errors.confirmPassword && <p className="text-sm text-red-400">{errors.confirmPassword.message}</p>}
-                </div>
+                </FormField>
               </div>
             </div>
 
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold text-white mb-4">Gym Information</h3>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="gymName">Gym Name</Label>
+                <FormField id="gymName" label="Gym Name" error={errors.gymName?.message}>
                   <Input
                     id="gymName"
                     type="text"
@@ -163,11 +154,9 @@ export default function GymOwnerRegisterPage() {
                     disabled={loading}
                     aria-invalid={!!errors.gymName}
                   />
-                  {errors.gymName && <p className="text-sm text-red-400">{errors.gymName.message}</p>}
-                </div>
+                </FormField>
 
-                <div className="space-y-2">
-                  <Label htmlFor="gymCity">City</Label>
+                <FormField id="gymCity" label="City" error={errors.gymCity?.message}>
                   <Input
                     id="gymCity"
                     type="text"
@@ -176,11 +165,9 @@ export default function GymOwnerRegisterPage() {
                     disabled={loading}
                     aria-invalid={!!errors.gymCity}
                   />
-                  {errors.gymCity && <p className="text-sm text-red-400">{errors.gymCity.message}</p>}
-                </div>
+                </FormField>
 
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="gymAddress">Address</Label>
+                <FormField id="gymAddress" label="Address" error={errors.gymAddress?.message} className="sm:col-span-2">
                   <Input
                     id="gymAddress"
                     type="text"
@@ -189,11 +176,9 @@ export default function GymOwnerRegisterPage() {
                     disabled={loading}
                     aria-invalid={!!errors.gymAddress}
                   />
-                  {errors.gymAddress && <p className="text-sm text-red-400">{errors.gymAddress.message}</p>}
-                </div>
+                </FormField>
 
-                <div className="space-y-2">
-                  <Label htmlFor="gymPhone">Phone (Optional)</Label>
+                <FormField id="gymPhone" label="Phone (Optional)">
                   <Input
                     id="gymPhone"
                     type="tel"
@@ -201,10 +186,9 @@ export default function GymOwnerRegisterPage() {
                     {...register('gymPhone')}
                     disabled={loading}
                   />
-                </div>
+                </FormField>
 
-                <div className="space-y-2">
-                  <Label htmlFor="gymEmail">Email (Optional)</Label>
+                <FormField id="gymEmail" label="Email (Optional)" error={errors.gymEmail?.message}>
                   <Input
                     id="gymEmail"
                     type="email"
@@ -213,20 +197,18 @@ export default function GymOwnerRegisterPage() {
                     disabled={loading}
                     aria-invalid={!!errors.gymEmail}
                   />
-                  {errors.gymEmail && <p className="text-sm text-red-400">{errors.gymEmail.message}</p>}
-                </div>
+                </FormField>
 
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="gymDescription">Description (Optional)</Label>
+                <FormField id="gymDescription" label="Description (Optional)" className="sm:col-span-2">
                   <textarea
                     id="gymDescription"
                     rows={3}
                     placeholder="Describe your gym facilities, equipment, classes, etc."
                     {...register('gymDescription')}
                     disabled={loading}
-                    className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4FF4F]/40 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt/40 disabled:cursor-not-allowed disabled:opacity-50"
                   />
-                </div>
+                </FormField>
               </div>
             </div>
 
@@ -245,7 +227,7 @@ export default function GymOwnerRegisterPage() {
         <CardFooter className="flex flex-col space-y-4">
           <p className="text-center text-sm text-zinc-400">
             Already have an account?{' '}
-            <Link href="/login" className="text-[#D4FF4F] hover:underline font-medium">
+            <Link href="/login" className="text-volt hover:underline font-medium">
               Sign in
             </Link>
           </p>

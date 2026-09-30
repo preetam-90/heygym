@@ -92,17 +92,17 @@ export default function TermsPage() {
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 md:py-20">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm font-medium text-zinc-400 transition-colors hover:text-[#D4FF4F]"
+          className="inline-flex items-center gap-2 text-sm font-medium text-zinc-400 transition-colors hover:text-volt"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to home
         </Link>
 
         <div className="mt-6 flex items-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#D4FF4F]">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-volt">
             <FileText className="h-6 w-6 text-black" aria-hidden="true" />
           </span>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D4FF4F]">Legal</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-volt">Legal</p>
         </div>
         <h1 className="mt-3 font-display text-4xl font-bold uppercase tracking-tight text-white md:text-5xl">
           Terms of Service
@@ -125,7 +125,7 @@ export default function TermsPage() {
               <ul className="mt-4 space-y-3">
                 {section.body.map((item) => (
                   <li key={item} className="flex gap-3 text-sm leading-relaxed text-zinc-400">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#D4FF4F]" aria-hidden="true" />
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-volt" aria-hidden="true" />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -134,12 +134,12 @@ export default function TermsPage() {
           ))}
         </div>
 
-        <div className="mt-10 rounded-2xl border border-[#D4FF4F]/20 bg-[#D4FF4F]/5 p-6 text-sm leading-relaxed text-zinc-300">
+        <div className="mt-10 rounded-2xl border border-volt/20 bg-volt/5 p-6 text-sm leading-relaxed text-zinc-300">
           Related:{' '}
-          <Link href="/privacy" className="font-semibold text-[#D4FF4F] hover:underline">
+          <Link href="/privacy" className="font-semibold text-volt hover:underline">
             Privacy Policy
           </Link>{' '}
-          · <Link href="/gym-owner/register" className="font-semibold text-[#D4FF4F] hover:underline">List your gym</Link>
+          · <Link href="/gym-owner/register" className="font-semibold text-volt hover:underline">List your gym</Link>
         </div>
       </div>
     </div>

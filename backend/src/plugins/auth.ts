@@ -60,7 +60,7 @@ export const authPlugin: FastifyPluginAsync = fp(async (fastify) => {
     // Suspended/banned enforcement: a valid JWT must not grant access when
     // the account is no longer ACTIVE. Per-request lookup so suspension
     // takes effect immediately (no stale cache window).
-    const tokenUserId = (request.user as any)?.id;
+    const tokenUserId = request.user?.id;
     if (tokenUserId) {
       const dbUser = await prisma.user.findUnique({
         where: { id: tokenUserId },
@@ -134,6 +134,21 @@ export const authPlugin: FastifyPluginAsync = fp(async (fastify) => {
 
   fastify.decorate('requirePermission', buildRequirePermission());
 });
+
+interface JwtPayload {
+  id: string;
+  email: string;
+  role: string;
+}
+
+// Typed JWT payload/user for @fastify/jwt. Replaces the `as any` casts that
+// were needed to read request.user in controllers.
+declare module '@fastify/jwt' {
+  interface FastifyJWT {
+    payload: JwtPayload;
+    user: JwtPayload;
+  }
+}
 
 declare module 'fastify' {
   interface FastifyInstance {

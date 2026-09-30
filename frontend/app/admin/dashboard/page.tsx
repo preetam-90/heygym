@@ -98,7 +98,7 @@ export default function AdminDashboardPage() {
     return (
       <div className="container px-4 py-16">
         <div className="flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#D4FF4F]" />
+          <Loader2 className="h-8 w-8 animate-spin text-volt" />
         </div>
       </div>
     );
@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex min-h-[44px] items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-[#D4FF4F] text-[#D4FF4F]'
+                  ? 'border-volt text-volt'
                   : 'border-transparent text-zinc-400 hover:text-zinc-300'
               }`}
             >
@@ -154,8 +154,8 @@ export default function AdminDashboardPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[#D4FF4F]/15 rounded-lg flex items-center justify-center">
-                    <Users className="h-6 w-6 text-[#D4FF4F]" />
+                  <div className="w-12 h-12 bg-volt/15 rounded-lg flex items-center justify-center">
+                    <Users className="h-6 w-6 text-volt" />
                   </div>
                   <div>
                     <p className="text-sm text-zinc-400">Total Users</p>
@@ -304,7 +304,7 @@ export default function AdminDashboardPage() {
                             <Button
                               size="sm"
                               onClick={() => handleGymStatusChange(gym.id, 'APPROVED')}
-                              className="bg-[#D4FF4F] text-black hover:brightness-110"
+                              className="bg-volt text-black hover:brightness-110"
                             >
                               <CheckCircle className="mr-1 h-3 w-3" />
                               Approve

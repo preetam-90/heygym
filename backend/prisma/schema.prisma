@@ -14,10 +14,9 @@ enum Role {
 }
 
 enum GymStatus {
-  PENDING
+  DRAFT
+  PENDING_APPROVAL
   APPROVED
-  REJECTED
-  UNDER_REVIEW
   SUSPENDED
 }
 
@@ -27,22 +26,44 @@ enum UserStatus {
   BANNED
 }
 
+enum EnquiryStatus {
+  NEW
+  READ
+  RESPONDED
+  CLOSED
+}
+
 model User {
-  id               String     @id @default(cuid())
+  id               String           @id @default(cuid())
   name             String
-  email            String     @unique
+  email            String           @unique
+  phone            String?          @unique
   passwordHash     String
-  role             Role       @default(USER)
-  status           UserStatus @default(ACTIVE)
+  avatarUrl        String?
+  role             Role             @default(USER)
+  status           UserStatus       @default(ACTIVE)
+  isActive         Boolean          @default(true)
   lastLoginAt      DateTime?
   deletedAt        DateTime?
   emailVerifiedAt  DateTime?
   phoneVerifiedAt  DateTime?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   gyms             Gym[]
-  resetToken       String?    @unique
+  favorites        Favorite[]
+  enquiries        Enquiry[]
+  reviews          Review[]
+  notifications    Notification[]
+  refreshSessions  RefreshSession[]
+  adminActions     AdminAction[]    @relation("AdminActor")
+  resetToken       String?          @unique
   resetTokenExpiry DateTime?
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+  @@index([status])
+  @@index([isActive])
 }
 
 model Gym {
@@ -50,6 +71,7 @@ model Gym {
   ownerId         String
   owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   name            String
+  slug            String           @unique
   description     String?
   address         String
   city            String
@@ -60,12 +82,12 @@ model Gym {
   phone           String?
   email           String?
   website         String?
-  facilities      String[]         @default([])
   services        String[]         @default([])
+  // Legacy simple hours kept for backward compat; canonical hours are GymHours.
   openingTime     String?
   closingTime     String?
   imageUrl        String?
-  status          GymStatus        @default(PENDING)
+  status          GymStatus        @default(DRAFT)
   verifiedAt      DateTime?
   deletedAt       DateTime?
   internalNotes   String?
@@ -73,31 +95,194 @@ model Gym {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   membershipPlans MembershipPlan[]
-  images          GymImage[]
+  photos          GymPhoto[]
+  hours           GymHours[]
+  gymFacilities   GymFacility[]
+  favorites       Favorite[]
+  enquiries       Enquiry[]
+  reviews         Review[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([city])
+  @@index([slug])
+  @@index([createdAt])
+  @@index([latitude, longitude])
 }
 
-model GymImage {
+model Facility {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  slug        String        @unique
+  description String?
+  icon        String?
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  gyms        GymFacility[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model GymFacility {
+  id         String   @id @default(cuid())
+  gymId      String
+  facilityId String
+  gym        Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([gymId, facilityId])
+  @@index([gymId])
+  @@index([facilityId])
+}
+
+model GymPhoto {
   id        String   @id @default(cuid())
   gymId     String
   gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
   url       String
+  altText   String?
   isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@map("GymImage")
+  @@index([gymId])
+}
+
+model GymHours {
+  id        String  @id @default(cuid())
+  gymId     String
+  gym       Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  // 0 = Sunday .. 6 = Saturday (JS convention)
+  dayOfWeek Int
+  openTime  String?
+  closeTime String?
+  isClosed  Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gymId, dayOfWeek])
   @@index([gymId])
 }
 
 model MembershipPlan {
-  id          String   @id @default(cuid())
-  gymId       String
-  gym         Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  price       Float
-  duration    Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  gymId        String
+  gym          Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(10, 2)
+  durationDays Int
+  features     String[] @default([])
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([gymId])
+  @@index([isActive])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  gymId     String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, gymId])
+  @@index([userId])
+  @@index([gymId])
+}
+
+model Enquiry {
+  id        String        @id @default(cuid())
+  gymId     String
+  userId    String
+  gym       Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  response  String?
+  status    EnquiryStatus @default(NEW)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([gymId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  gymId     String
+  userId    String
+  gym       Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  title     String?
+  comment   String?
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, gymId])
+  @@index([gymId])
+  @@index([userId])
+  @@index([rating])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([readAt])
+  @@index([createdAt])
+}
+
+model RefreshSession {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  ip        String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AdminAction {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation("AdminActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String?
+  targetId   String?
+  reason     String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model AuditLog {

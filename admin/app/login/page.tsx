@@ -70,7 +70,7 @@ function LoginForm() {
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="rounded-lg border border-white/10 bg-[#09090B] px-3 py-2 text-zinc-100 outline-none focus:border-[#D4FF4F]"
+            className="rounded-lg border border-white/10 bg-[#09090B] px-3 py-2 text-zinc-100 outline-none focus:border-volt"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -81,7 +81,7 @@ function LoginForm() {
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="rounded-lg border border-white/10 bg-[#09090B] px-3 py-2 text-zinc-100 outline-none focus:border-[#D4FF4F]"
+            className="rounded-lg border border-white/10 bg-[#09090B] px-3 py-2 text-zinc-100 outline-none focus:border-volt"
           />
         </label>
         {notice && (
@@ -92,7 +92,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-lg bg-[#D4FF4F] px-4 py-2 text-sm font-bold text-black disabled:opacity-50"
+          className="rounded-lg bg-volt px-4 py-2 text-sm font-bold text-black disabled:opacity-50"
         >
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>

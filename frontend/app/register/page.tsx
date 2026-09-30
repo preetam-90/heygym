@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -76,8 +76,7 @@ function RegisterPageContent() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+            <FormField id="name" label="Full Name" error={errors.name?.message}>
               <Input
                 id="name"
                 type="text"
@@ -86,13 +85,9 @@ function RegisterPageContent() {
                 disabled={loading}
                 aria-invalid={!!errors.name}
               />
-              {errors.name && (
-                <p className="text-sm text-red-400">{errors.name.message}</p>
-              )}
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <FormField id="email" label="Email" error={errors.email?.message}>
               <Input
                 id="email"
                 type="email"
@@ -101,13 +96,9 @@ function RegisterPageContent() {
                 disabled={loading}
                 aria-invalid={!!errors.email}
               />
-              {errors.email && (
-                <p className="text-sm text-red-400">{errors.email.message}</p>
-              )}
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <FormField id="password" label="Password" error={errors.password?.message}>
               <Input
                 id="password"
                 type="password"
@@ -116,13 +107,9 @@ function RegisterPageContent() {
                 disabled={loading}
                 aria-invalid={!!errors.password}
               />
-              {errors.password && (
-                <p className="text-sm text-red-400">{errors.password.message}</p>
-              )}
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <FormField id="confirmPassword" label="Confirm Password" error={errors.confirmPassword?.message}>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -131,10 +118,7 @@ function RegisterPageContent() {
                 disabled={loading}
                 aria-invalid={!!errors.confirmPassword}
               />
-              {errors.confirmPassword && (
-                <p className="text-sm text-red-400">{errors.confirmPassword.message}</p>
-              )}
-            </div>
+            </FormField>
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
@@ -151,7 +135,7 @@ function RegisterPageContent() {
         <CardFooter className="flex flex-col space-y-4">
           <p className="text-center text-sm text-zinc-400">
             Already have an account?{' '}
-            <Link href="/login" className="text-[#D4FF4F] hover:underline font-medium">
+            <Link href="/login" className="text-volt hover:underline font-medium">
               Sign in
             </Link>
           </p>
@@ -165,7 +149,7 @@ import { Suspense } from 'react';
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="min-h-[calc(100vh-200px)] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#D4FF4F]" /></div>}>
+    <Suspense fallback={<div className="min-h-[calc(100vh-200px)] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-volt" /></div>}>
       <RegisterPageContent />
     </Suspense>
   );

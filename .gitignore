@@ -29,3 +29,6 @@ coverage/
 .vercel
 .turbo
 *.tsbuildinfo
+
+# Generated tooling output
+repomix-output.xml

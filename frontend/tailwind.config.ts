@@ -9,6 +9,9 @@ module.exports = {
       colors: {
         volt: {
           DEFAULT: '#D4FF4F',
+          bright: '#E2FF7A',
+          deep: '#B8E62E',
+          ink: '#0A0F00',
           soft: 'rgba(212,255,79,0.08)',
           line: 'rgba(212,255,79,0.22)',
           dim: 'rgba(212,255,79,0.15)',

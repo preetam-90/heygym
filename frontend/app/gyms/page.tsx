@@ -7,7 +7,6 @@ import {
   Search,
   X,
   MapPin,
-  ChevronDown,
   ArrowDownWideNarrow,
   Columns2,
   Check,
@@ -15,7 +14,6 @@ import {
   Wallet,
   Navigation,
   Heart,
-  Star,
   ArrowRight,
   Square,
   CheckSquare,
@@ -27,7 +25,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { photoSrc } from '@/lib/gym-owner';
-import type { Gym } from '@/types';
+import type { Gym, GymSearchMeta, GymSort } from '@/types';
 import { SHOWCASE_GYMS, MAP_BACKDROP, AVATAR_FALLBACK, type ShowcaseGym } from '@/lib/showcase';
 import { toggleCompare, clearCompare, useCompareSlugs } from '@/lib/compare-store';
 
@@ -55,7 +53,7 @@ interface DisplayGym {
   isShowcase: boolean;
 }
 
-function toDisplay(gym: Gym, index: number): DisplayGym {
+function toDisplay(gym: Gym & { distanceKm?: number }, index: number): DisplayGym {
   const match = SHOWCASE_GYMS.find(
     (s) => s.name.toLowerCase() === gym.name.toLowerCase() || s.slug === gym.id,
   );
@@ -72,7 +70,10 @@ function toDisplay(gym: Gym, index: number): DisplayGym {
     key: gym.id,
     slug: match?.slug ?? gym.id,
     name: gym.name,
-    locationLine: `${gym.address}, ${gym.city}`,
+    locationLine:
+      gym.distanceKm != null
+        ? `${gym.distanceKm} km away • ${gym.address}, ${gym.city}`
+        : `${gym.address}, ${gym.city}`,
     shortArea: gym.city,
     rating: match?.rating ?? null,
     reviews: match?.reviews ?? null,
@@ -122,45 +123,44 @@ function showcaseToDisplay(s: ShowcaseGym): DisplayGym {
   };
 }
 
+// Chips map to real, indexed data (facility arrays and plan price) so the
+// result count is honest instead of a client-side guess.
 const QUICK_CHIPS = [
-  { id: 'price', label: 'Price: Under ₹2,500/mo', kind: 'active' },
-  { id: 'rating', label: 'Rating 4.5+ ★', kind: 'active' },
-  { id: 'open', label: 'Open Now (Until 11 PM)', kind: 'dot' },
-  { id: 'olympic', label: 'Olympic Racks & Plates', kind: 'plain' },
-  { id: 'recovery', label: 'AC & Cold Plunge', kind: 'plain' },
-  { id: 'parking', label: 'Dedicated Basement Parking', kind: 'plain' },
+  { id: 'price', label: 'Under ₹2,500/mo', maxPrice: 2500 },
+  { id: 'crossfit', label: 'CrossFit', facility: 'CrossFit' },
+  { id: 'yoga', label: 'Yoga', facility: 'Yoga' },
+  { id: 'weights', label: 'Weight Training', facility: 'Weight Training' },
+  { id: 'cardio', label: 'Cardio', facility: 'Cardio' },
+  { id: 'parking', label: 'Parking', facility: 'Parking' },
 ] as const;
 
 type ChipId = (typeof QUICK_CHIPS)[number]['id'];
 
-function matchesChip(g: DisplayGym, chip: ChipId): boolean {
-  const hay = `${g.name} ${g.description} ${g.amenities.join(' ')}`.toLowerCase();
-  switch (chip) {
-    case 'price':
-      return g.priceValue == null || g.priceValue <= 2500;
-    case 'rating':
-      return g.rating == null || g.rating >= 4.5;
-    case 'open':
-      return true;
-    case 'olympic':
-      return /olympic|rack|platform|eleiko|rogue|barbell|strength/.test(hay);
-    case 'recovery':
-      return /sauna|plunge|steam|recovery|cold/.test(hay);
-    case 'parking':
-      return /parking|valet/.test(hay);
-    default:
-      return true;
-  }
-}
+const CHIP_LABEL = Object.fromEntries(QUICK_CHIPS.map((chip) => [chip.id, chip.label])) as Record<
+  ChipId,
+  string
+>;
 
-const CHIP_LABEL: Record<ChipId, string> = {
-  price: 'Price: Under ₹2,500/mo',
-  rating: 'Rating 4.5+',
-  open: 'Open Now',
-  olympic: 'Olympic Racks',
-  recovery: 'Cold Plunge',
-  parking: 'Parking',
+const PRICE_CHIP_MAX = 2500;
+const PAGE_SIZE = 12;
+
+const SORT_OPTIONS = ['Recommended', 'Price: Low to High', 'Price: High to Low', 'Name: A–Z'] as const;
+type SortOption = (typeof SORT_OPTIONS)[number];
+
+const SORT_PARAM: Record<SortOption, GymSort> = {
+  Recommended: 'newest',
+  'Price: Low to High': 'price_asc',
+  'Price: High to Low': 'price_desc',
+  'Name: A–Z': 'name',
 };
+
+function facilityFilters(chips: ChipId[]): string[] | undefined {
+  const list = QUICK_CHIPS.filter(
+    (chip): chip is (typeof QUICK_CHIPS)[number] & { facility: string } =>
+      chips.includes(chip.id) && 'facility' in chip,
+  ).map((chip) => chip.facility);
+  return list.length > 0 ? list : undefined;
+}
 
 function GymCard({ gym, index }: { gym: DisplayGym; index: number }) {
   const comparedSlugs = useCompareSlugs();
@@ -307,68 +307,121 @@ function GymCard({ gym, index }: { gym: DisplayGym; index: number }) {
 
 function GymsPageInner() {
   const searchParams = useSearchParams();
-  const [gyms, setGyms] = useState<Gym[]>([]);
+  const [gyms, setGyms] = useState<(Gym & { distanceKm?: number })[]>([]);
+  const [meta, setMeta] = useState<GymSearchMeta | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
-  const [location, setLocation] = useState('Sector 62, Noida (Within 5 km)');
-  const [sort, setSort] = useState('Recommended');
-  const [activeChips, setActiveChips] = useState<ChipId[]>(['price', 'rating']);
-  const [visible, setVisible] = useState(4);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [city, setCity] = useState('');
+  const [debouncedCity, setDebouncedCity] = useState('');
+  const [sort, setSort] = useState<SortOption>('Recommended');
+  const [activeChips, setActiveChips] = useState<ChipId[]>([]);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [page, setPage] = useState(1);
   const [mapFull, setMapFull] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const comparedSlugs = useCompareSlugs();
 
+  // Seed from ?q= / ?location= so the home-page search actually reaches the API.
   useEffect(() => {
     setSearch(searchParams.get('q') ?? '');
     const loc = searchParams.get('location');
-    if (loc) setLocation(`${loc} (Within 5 km)`);
+    if (loc) setCity(loc.replace(/\s*\(.*\)\s*$/, '').trim());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Debounce text inputs so each keystroke doesn't hit the API, and reset paging.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setDebouncedCity(city.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, city]);
+
+  const facilities = facilityFilters(activeChips);
+  const maxPrice = activeChips.includes('price') ? PRICE_CHIP_MAX : undefined;
+  const facilitiesKey = facilities?.join(',') ?? '';
+
   useEffect(() => {
     let live = true;
+    if (page === 1) setLoading(true);
+    else setLoadingMore(true);
     api
-      .getGyms()
-      .then((data) => {
-        if (live) setGyms(data);
+      .searchGyms({
+        q: debouncedSearch || undefined,
+        city: debouncedCity || undefined,
+        facilities,
+        maxPrice,
+        sort: SORT_PARAM[sort],
+        page,
+        pageSize: PAGE_SIZE,
+        ...(coords ? { lat: coords.lat, lng: coords.lng, radiusKm: 5 } : {}),
+      })
+      .then((result) => {
+        if (!live) return;
+        setGyms((prev) => (page === 1 ? result.gyms : [...prev, ...result.gyms]));
+        setMeta(result);
       })
       .catch(() => {
-        if (live) setGyms([]);
+        if (!live) return;
+        if (page === 1) setGyms([]);
+        setMeta(null);
       })
       .finally(() => {
-        if (live) setLoading(false);
+        if (!live) return;
+        setLoading(false);
+        setLoadingMore(false);
       });
     return () => {
       live = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, debouncedCity, sort, facilitiesKey, maxPrice, page, coords]);
+
+  const hasFilters = !!debouncedSearch || !!debouncedCity || activeChips.length > 0 || !!coords;
+  const usingFallback = !loading && gyms.length === 0 && !hasFilters;
 
   const catalogue: DisplayGym[] = useMemo(() => {
     if (gyms.length > 0) return gyms.map(toDisplay);
-    return SHOWCASE_GYMS.slice(0, 4).map(showcaseToDisplay);
-  }, [gyms]);
+    if (usingFallback) return SHOWCASE_GYMS.slice(0, 4).map(showcaseToDisplay);
+    return [];
+  }, [gyms, usingFallback]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let list = catalogue.filter((g) => {
-      const matchesSearch =
-        !q ||
-        g.name.toLowerCase().includes(q) ||
-        g.description.toLowerCase().includes(q) ||
-        g.amenities.some((a) => a.toLowerCase().includes(q));
-      const matchesChips = activeChips.every((c) => matchesChip(g, c));
-      return matchesSearch && matchesChips;
-    });
-    if (sort === 'Price: Low to High') list = [...list].sort((a, b) => (a.priceValue ?? 999999) - (b.priceValue ?? 999999));
-    if (sort === 'Rating: High to Low') list = [...list].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-    return list;
-  }, [catalogue, search, activeChips, sort]);
-
-  const shown = filtered.slice(0, visible);
+  const total = usingFallback ? SHOWCASE_GYMS.length : (meta?.total ?? gyms.length);
+  const hasMore = !usingFallback && !!meta?.hasMore;
   const comparedGyms = catalogue.filter((g) => comparedSlugs.includes(g.slug));
-  const totalLabel = gyms.length > 0 ? gyms.length : 48;
 
-  const toggleChip = (id: ChipId) =>
+  const toggleChip = (id: ChipId) => {
     setActiveChips((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setCity('');
+    setActiveChips([]);
+    setCoords(null);
+    setGeoError(null);
+    setPage(1);
+  };
+
+  const useMyLocation = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGeoError('Location is not available in this browser.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGeoError(null);
+        setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setPage(1);
+      },
+      () => setGeoError('Could not get your location. Check browser permissions.'),
+    );
+  };
 
   return (
     <div className="w-full bg-surface pt-20">
@@ -387,10 +440,11 @@ function GymsPageInner() {
                 </span>
               </div>
               <h1 className="font-headline-lg text-[28px] tracking-tight text-primary">
-                Find your next gym in <span className="text-primary-container">Noida &amp; Delhi NCR</span>
+                Find your next gym in{' '}
+                <span className="text-primary-container">{city || 'Noida & Delhi NCR'}</span>
               </h1>
               <p className="font-body-md text-[14px] text-on-surface-variant">
-                Showing <strong className="font-bold text-primary">{totalLabel}</strong> verified private facilities,
+                Showing <strong className="font-bold text-primary">{total}</strong> verified private facilities,
                 strength compounds &amp; boutique clubs
               </p>
             </div>
@@ -425,10 +479,7 @@ function GymsPageInner() {
                 placeholder="Search by gym name, equipment (Eleiko, Rogue), steam, turf..."
                 type="text"
                 value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setVisible(4);
-                }}
+                onChange={(e) => setSearch(e.target.value)}
                 aria-label="Search gyms"
               />
               {search && (
@@ -441,29 +492,48 @@ function GymsPageInner() {
                 </button>
               )}
             </div>
-            <div className="flex cursor-pointer items-center justify-between rounded-lg bg-surface-container-lowest px-4 py-2 transition-colors hover:bg-surface-variant/40 lg:col-span-4">
-              <div className="flex min-w-0 items-center gap-2">
-                <MapPin className="h-[18px] w-[18px] shrink-0 text-primary-container" aria-hidden="true" />
-                <div className="min-w-0 text-left">
-                  <span className="block truncate font-label-xs-mono text-[11px] uppercase text-on-surface-variant">
-                    Search Radius
-                  </span>
-                  <span className="block truncate font-label-md text-[12px] font-bold text-primary">{location}</span>
-                </div>
+            <div className="flex items-center gap-2 rounded-lg bg-surface-container-lowest px-4 py-2 focus-within:ring-1 focus-within:ring-primary-container lg:col-span-4">
+              <MapPin className="h-[18px] w-[18px] shrink-0 text-primary-container" aria-hidden="true" />
+              <div className="min-w-0 flex-1 text-left">
+                <label
+                  htmlFor="gyms-city"
+                  className="block font-label-xs-mono text-[11px] uppercase text-on-surface-variant"
+                >
+                  City
+                </label>
+                <input
+                  id="gyms-city"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder={coords ? 'Near me (5 km)' : 'All cities'}
+                  className="w-full truncate bg-transparent font-label-md text-[12px] font-bold text-primary placeholder:text-on-surface-variant/60 focus:outline-none"
+                  aria-label="Filter by city"
+                />
               </div>
-              <ChevronDown className="h-4 w-4 text-on-surface-variant" aria-hidden="true" />
+              {coords && (
+                <button
+                  onClick={() => setCoords(null)}
+                  className="shrink-0 rounded bg-surface-container-high px-2 py-0.5 font-label-xs-mono text-[11px] font-bold text-primary-container"
+                  title="Clear location filter"
+                >
+                  5 km ✕
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-1 lg:col-span-2">
               <div className="relative flex-1">
                 <select
                   value={sort}
-                  onChange={(e) => setSort(e.target.value)}
+                  onChange={(e) => {
+                    setSort(e.target.value as SortOption);
+                    setPage(1);
+                  }}
                   aria-label="Sort gyms"
                   className="w-full cursor-pointer appearance-none truncate rounded-lg bg-surface-container-lowest px-4 py-2 pr-8 font-label-md text-[12px] font-bold text-primary transition-colors hover:bg-surface-variant/40 focus:outline-none [&>option]:bg-surface-container-low"
                 >
-                  <option>Recommended</option>
-                  <option>Price: Low to High</option>
-                  <option>Rating: High to Low</option>
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option}>{option}</option>
+                  ))}
                 </select>
                 <ArrowDownWideNarrow className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-on-surface-variant" aria-hidden="true" />
               </div>
@@ -477,6 +547,12 @@ function GymsPageInner() {
               </button>
             </div>
           </div>
+
+          {geoError && (
+            <p role="alert" className="pt-2 font-label-md text-[12px] text-amber-300">
+              {geoError}
+            </p>
+          )}
 
           {/* Quick Filter Chips & Toggles */}
           <div className="no-scrollbar flex items-center gap-1 overflow-x-auto py-2.5">
@@ -492,9 +568,6 @@ function GymsPageInner() {
                       : 'bg-surface-container-high text-on-surface hover:bg-surface-bright hover:text-primary'
                   }`}
                 >
-                  {chip.kind === 'dot' && !active && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
-                  )}
                   <span>{chip.label}</span>
                   {active && <Check className="h-3.5 w-3.5 font-bold" aria-hidden="true" />}
                 </button>
@@ -511,7 +584,7 @@ function GymsPageInner() {
               Active Criteria:
             </span>
             <span className="inline-flex items-center gap-1 rounded bg-surface-container-high px-2 py-0.5 font-label-xs-mono text-[11px] text-primary">
-              Sector 62 (≤ 5km)
+              {coords ? 'Within 5 km of you' : city || 'All locations'}
             </span>
             {activeChips.map((c) => (
               <span
@@ -548,7 +621,7 @@ function GymsPageInner() {
             <div className="flex items-center gap-2">
               <span className="font-headline-sm text-[18px] font-bold text-primary">Top Verified Facilities</span>
               <span className="rounded bg-surface-container-high px-2 py-0.5 font-label-xs-mono text-[11px] text-on-surface-variant">
-                {filtered.length} MATCHES
+                {total} MATCHES
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -572,41 +645,39 @@ function GymsPageInner() {
                 </div>
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : catalogue.length === 0 ? (
             <div className="rounded-xl bg-surface-container p-6 py-16 text-center">
               <p className="text-[19px] font-semibold text-white">No gyms found</p>
               <p className="mt-2 text-[14px] text-zinc-400">Try a different search or clear filters.</p>
               <button
-                onClick={() => {
-                  setSearch('');
-                  setActiveChips([]);
-                }}
+                onClick={clearFilters}
                 className="mt-4 text-[14px] font-semibold text-primary-container hover:underline"
               >
                 Clear filters
               </button>
             </div>
           ) : (
-            shown.map((gym, i) => <GymCard key={gym.key} gym={gym} index={i} />)
+            catalogue.map((gym, i) => <GymCard key={gym.key} gym={gym} index={i} />)
           )}
 
           {/* Pagination */}
           <div className="flex flex-col items-center justify-center gap-2 rounded-xl bg-surface-container p-6 text-center shadow-md">
             <span className="font-label-md text-[12px] font-semibold text-on-surface-variant">
-              Displaying {shown.length} of {filtered.length} verified facilities
+              Displaying {catalogue.length} of {total} verified facilities
             </span>
             <div className="h-1.5 w-48 overflow-hidden rounded-full bg-surface-container-highest">
               <div
                 className="h-full bg-primary-container"
-                style={{ width: `${filtered.length ? Math.min(100, (shown.length / filtered.length) * 100) : 0}%` }}
+                style={{ width: `${total ? Math.min(100, (catalogue.length / total) * 100) : 0}%` }}
               />
             </div>
-            {visible < filtered.length && (
+            {hasMore && (
               <button
-                onClick={() => setVisible((v) => v + 4)}
-                className="rounded-lg bg-surface-container-high px-6 py-2.5 font-label-lg text-[14px] font-bold text-primary shadow-sm transition-all hover:bg-surface-bright"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={loadingMore}
+                className="rounded-lg bg-surface-container-high px-6 py-2.5 font-label-lg text-[14px] font-bold text-primary shadow-sm transition-all hover:bg-surface-bright disabled:opacity-60"
               >
-                Load 12 More Facilities
+                {loadingMore ? 'Loading…' : `Load ${PAGE_SIZE} More Facilities`}
               </button>
             )}
           </div>
@@ -655,6 +726,7 @@ function GymsPageInner() {
                   key={label}
                   className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-container-lowest/90 text-primary shadow-lg backdrop-blur-md transition-colors hover:text-primary-container"
                   title={label}
+                  onClick={label === 'Recenter my location' ? useMyLocation : undefined}
                 >
                   <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
                 </button>
@@ -662,7 +734,7 @@ function GymsPageInner() {
             </div>
           </div>
 
-          {shown.slice(0, 4).map((gym, i) => (
+          {catalogue.slice(0, 4).map((gym, i) => (
             <div
               key={gym.key}
               className="absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-pointer"
@@ -697,33 +769,33 @@ function GymsPageInner() {
             </div>
           </div>
 
-          {shown[0] && (
+          {catalogue[0] && (
             <div className="z-30 m-4 mt-auto rounded-xl bg-surface-container-lowest/95 p-4 shadow-2xl ring-1 ring-primary-container/30 backdrop-blur-xl">
               <div className="flex items-center gap-2">
                 <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
-                  <img className="h-full w-full object-cover" src={shown[0].image} alt={shown[0].name} />
+                  <img className="h-full w-full object-cover" src={catalogue[0].image} alt={catalogue[0].name} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="font-label-xs-mono text-[11px] font-bold uppercase tracking-wider text-primary-container">
                       Featured on Map
                     </span>
-                    {shown[0].rating != null && (
+                    {catalogue[0].rating != null && (
                       <span className="font-label-xs-mono text-[11px] font-bold text-amber-300">
-                        ★ {shown[0].rating.toFixed(1)} ({shown[0].reviews})
+                        ★ {catalogue[0].rating.toFixed(1)} ({catalogue[0].reviews})
                       </span>
                     )}
                   </div>
-                  <h4 className="truncate font-label-lg text-[14px] font-bold text-primary">{shown[0].name}</h4>
+                  <h4 className="truncate font-label-lg text-[14px] font-bold text-primary">{catalogue[0].name}</h4>
                   <p className="truncate font-body-sm text-[12px] text-on-surface-variant">
-                    {shown[0].shortArea} • {shown[0].openLabel}
+                    {catalogue[0].shortArea} • {catalogue[0].openLabel}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
                   <span className="block font-headline-sm text-[18px] font-extrabold leading-tight text-primary">
-                    {shown[0].priceLabel}
+                    {catalogue[0].priceLabel}
                   </span>
-                  {shown[0].priceValue != null && (
+                  {catalogue[0].priceValue != null && (
                     <span className="block font-label-xs-mono text-[11px] text-on-surface-variant">/ month</span>
                   )}
                 </div>
@@ -734,7 +806,7 @@ function GymsPageInner() {
                   Pass available today
                 </span>
                 <Link
-                  href={`/gyms/${shown[0].gymId}`}
+                  href={`/gyms/${catalogue[0].gymId}`}
                   className="inline-flex items-center gap-0.5 font-label-md text-[12px] font-bold text-primary-container hover:underline"
                 >
                   Explore club <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />

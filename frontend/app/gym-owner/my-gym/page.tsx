@@ -206,7 +206,7 @@ export default function MyGymPage() {
     return (
       <div className="container px-4 py-16">
         <div className="flex justify-center" role="status" aria-label="Loading">
-          <Loader2 className="h-8 w-8 animate-spin text-[#D4FF4F]" />
+          <Loader2 className="h-8 w-8 animate-spin text-volt" />
         </div>
       </div>
     );
@@ -214,7 +214,7 @@ export default function MyGymPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <Link href="/gym-owner/dashboard" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-[#D4FF4F]">
+      <Link href="/gym-owner/dashboard" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-400 hover:text-volt">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Back to Dashboard
       </Link>
@@ -330,7 +330,7 @@ export default function MyGymPage() {
                       onClick={() => toggleFacility(facility)}
                       aria-pressed={active}
                       className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                        active ? 'border-[#D4FF4F] bg-[#D4FF4F]/15 text-[#D4FF4F]' : 'border-white/15 text-zinc-300 hover:bg-white/5'
+                        active ? 'border-volt bg-volt/15 text-volt' : 'border-white/15 text-zinc-300 hover:bg-white/5'
                       }`}
                     >
                       {facility}

@@ -426,7 +426,7 @@ export default function GymOwnerDashboardPage() {
         </div>
       )}
       {uploadProgress && (
-        <div className="mb-5 flex items-center gap-3 rounded-[14px] border border-[#D4FF4F]/25 bg-[#D4FF4F]/[0.07] p-4 text-[13.5px] text-[#D4FF4F]" role="status">
+        <div className="mb-5 flex items-center gap-3 rounded-[14px] border border-volt/25 bg-volt/[0.07] p-4 text-[13.5px] text-volt" role="status">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           {uploadProgress}
         </div>
@@ -491,7 +491,7 @@ export default function GymOwnerDashboardPage() {
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
                 className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[11px] px-4 py-2.5 text-[13.5px] font-medium transition-colors duration-150 ${
-                  tab === t.id ? 'bg-[#D4FF4F] text-black shadow-[0_4px_16px_rgba(212,255,79,0.25)]' : 'text-zinc-400 hover:bg-white/[0.06] hover:text-white'
+                  tab === t.id ? 'bg-volt text-black shadow-[0_4px_16px_rgba(212,255,79,0.25)]' : 'text-zinc-400 hover:bg-white/[0.06] hover:text-white'
                 }`}
               >
                 <t.icon className="h-4 w-4" aria-hidden="true" />
@@ -550,7 +550,7 @@ export default function GymOwnerDashboardPage() {
                       <span className="tabular font-semibold text-white">{completion}%</span>
                     </div>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]" role="progressbar" aria-valuenow={completion} aria-valuemin={0} aria-valuemax={100} aria-label="Profile completion">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[#b8e62e] to-[#D4FF4F] transition-[width] duration-500" style={{ width: `${completion}%` }} />
+                      <div className="h-full rounded-full bg-gradient-to-r from-volt-deep to-volt transition-[width] duration-500" style={{ width: `${completion}%` }} />
                     </div>
                   </div>
                   {/* Meta strip */}
@@ -580,7 +580,7 @@ export default function GymOwnerDashboardPage() {
                     </div>
                   )}
                   {(gym.status === 'PENDING' || gym.status === 'REJECTED') && (
-                    <div className="flex flex-col gap-3 rounded-[14px] border border-[#D4FF4F]/20 bg-[#D4FF4F]/[0.05] p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-3 rounded-[14px] border border-volt/20 bg-volt/[0.05] p-4 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-[13.5px] leading-relaxed text-zinc-300">
                         {gym.status === 'PENDING' ? 'Looking good? Submit for review to go live.' : 'Changes saved? Resubmit for review.'}
                       </p>
@@ -607,8 +607,8 @@ export default function GymOwnerDashboardPage() {
                         onClick={() => (item.action === 'my-gym' ? router.push('/gym-owner/my-gym') : setTab(item.action))}
                         className="flex w-full items-center gap-3 rounded-[12px] p-2.5 text-left transition-colors hover:bg-white/[0.05]"
                       >
-                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${item.done ? 'border-[#D4FF4F]/40 bg-[#D4FF4F]/15' : 'border-white/15 bg-white/[0.04]'}`}>
-                          {item.done ? <Check className="h-3.5 w-3.5 text-[#D4FF4F]" aria-hidden="true" /> : <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" aria-hidden="true" />}
+                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${item.done ? 'border-volt/40 bg-volt/15' : 'border-white/15 bg-white/[0.04]'}`}>
+                          {item.done ? <Check className="h-3.5 w-3.5 text-volt" aria-hidden="true" /> : <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" aria-hidden="true" />}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className={`block truncate text-[13.5px] font-medium ${item.done ? 'text-zinc-400 line-through decoration-zinc-600' : 'text-zinc-100'}`}>{item.label}</span>
@@ -625,7 +625,7 @@ export default function GymOwnerDashboardPage() {
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-2">
                     <button onClick={() => setTab('photos')} className="flex flex-col items-start gap-2 rounded-[12px] border border-white/[0.08] bg-white/[0.03] p-3.5 text-left transition-colors hover:border-white/20 hover:bg-white/[0.06]">
-                      <Upload className="h-4.5 w-4.5 text-[#D4FF4F]" aria-hidden="true" />
+                      <Upload className="h-4.5 w-4.5 text-volt" aria-hidden="true" />
                       <span className="text-[13px] font-medium text-zinc-200">Upload photos</span>
                     </button>
                     <button onClick={() => setTab('plans')} className="flex flex-col items-start gap-2 rounded-[12px] border border-white/[0.08] bg-white/[0.03] p-3.5 text-left transition-colors hover:border-white/20 hover:bg-white/[0.06]">
@@ -667,17 +667,17 @@ export default function GymOwnerDashboardPage() {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => { e.preventDefault(); void handleFiles(e.dataTransfer.files); }}
                 className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border border-dashed p-10 text-center transition-colors duration-200 ${
-                  dragOver ? 'border-[#D4FF4F]/60 bg-[#D4FF4F]/[0.06]' : 'border-white/[0.14] bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]'
+                  dragOver ? 'border-volt/60 bg-volt/[0.06]' : 'border-white/[0.14] bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]'
                 }`}
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#D4FF4F] shadow-[0_4px_16px_rgba(212,255,79,0.25)]">
+                <span className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-volt shadow-[0_4px_16px_rgba(212,255,79,0.25)]">
                   {uploading ? <Loader2 className="h-5 w-5 animate-spin text-black" /> : <Upload className="h-5 w-5 text-black" aria-hidden="true" />}
                 </span>
                 <div>
                   <p className="text-[15px] font-semibold text-white">{dragOver ? 'Drop photos to upload' : 'Drag photos here, or click to browse'}</p>
                   <p className="mt-1 text-[13px] text-zinc-500">{photoCount} of 10 used · JPG, PNG, WebP · max 5 MB each · first photo becomes cover</p>
                 </div>
-                <span aria-hidden="true" className="inline-flex h-10 min-h-[44px] items-center justify-center rounded-[8px] bg-[#D4FF4F] px-4 text-[13px] font-semibold text-[#0A0F00]">
+                <span aria-hidden="true" className="inline-flex h-10 min-h-[44px] items-center justify-center rounded-[8px] bg-volt px-4 text-[13px] font-semibold text-volt-ink">
                   {uploading ? 'Uploading…' : 'Choose files'}
                 </span>
               </label>
@@ -706,7 +706,7 @@ export default function GymOwnerDashboardPage() {
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
                           {photo.isPrimary && (
-                            <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-[#D4FF4F] px-2.5 py-1 text-[11px] font-bold text-black">
+                            <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-volt px-2.5 py-1 text-[11px] font-bold text-black">
                               <Star className="h-3 w-3" aria-hidden="true" />
                               Cover
                             </span>
@@ -719,7 +719,7 @@ export default function GymOwnerDashboardPage() {
                               Make cover
                             </Button>
                           ) : (
-                            <span className="flex-1 rounded-[8px] bg-[#D4FF4F]/[0.08] px-3 py-2.5 text-center text-[12.5px] font-medium text-[#D4FF4F]">Cover photo</span>
+                            <span className="flex-1 rounded-[8px] bg-volt/[0.08] px-3 py-2.5 text-center text-[12.5px] font-medium text-volt">Cover photo</span>
                           )}
                           {confirmDeleteId === photo.id ? (
                             <span className="flex flex-1 gap-1.5">

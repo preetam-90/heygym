@@ -162,7 +162,7 @@ export default function GymsPendingPage() {
                         type="button"
                         disabled={gym.id in pendingAction}
                         onClick={() => void handleStatusChange(gym.id, 'APPROVED')}
-                        className="rounded-lg bg-[#D4FF4F] px-3 py-1.5 text-xs font-bold text-black disabled:opacity-50"
+                        className="rounded-lg bg-volt px-3 py-1.5 text-xs font-bold text-black disabled:opacity-50"
                       >
                         {pendingAction[gym.id] === 'APPROVED' ? 'Approving…' : 'Approve'}
                       </button>

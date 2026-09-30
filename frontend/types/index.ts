@@ -74,6 +74,41 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
+export type GymSort = 'newest' | 'name' | 'price_asc' | 'price_desc';
+
+export interface GymSearchParams {
+  q?: string;
+  city?: string;
+  facilities?: string[];
+  maxPrice?: number;
+  sort?: GymSort;
+  page?: number;
+  pageSize?: number;
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
+}
+
+export interface GymSearchMeta {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+export interface GymSearchResult extends GymSearchMeta {
+  gyms: (Gym & { distanceKm?: number })[];
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  totalGyms: number;
+  pendingGyms: number;
+  approvedGyms: number;
+  rejectedGyms: number;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

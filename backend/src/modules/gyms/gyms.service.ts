@@ -252,4 +252,16 @@ export class GymsService {
     });
     return updated;
   }
+
+  async deleteMembershipPlan(planId: string, gymId: string, ownerId: string) {
+    const plan = await prisma.membershipPlan.findUnique({ where: { id: planId } });
+    if (!plan) throw new Error('Plan not found');
+    if (plan.gymId !== gymId) throw new Error('Plan does not belong to this gym');
+
+    const gym = await prisma.gym.findUnique({ where: { id: gymId } });
+    if (!gym || gym.ownerId !== ownerId) throw new Error('Not authorized');
+
+    await prisma.membershipPlan.delete({ where: { id: planId } });
+    return { deleted: true };
+  }
 }

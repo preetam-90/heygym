@@ -149,17 +149,21 @@ export default function GymPhotosPage() {
             {photos.length} of 10 photos · JPG, PNG, or WebP · max 5 MB each
           </p>
         </div>
-        <Button onClick={() => fileRef.current?.click()} disabled={uploading || photos.length >= 10}>
+        <label
+          htmlFor="gym-photos-input"
+          className={`inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center rounded-[10px] bg-[#D4FF4F] px-5 text-sm font-semibold text-[#0A0F00] transition-colors hover:bg-[#e2ff7a] ${uploading || photos.length >= 10 ? 'pointer-events-none opacity-50' : ''}`}
+        >
           {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
           Upload Photos
-        </Button>
+        </label>
       </div>
       <input
         ref={fileRef}
+        id="gym-photos-input"
         type="file"
         accept={ACCEPT}
         multiple
-        className="hidden"
+        className="sr-only"
         onChange={(e) => void handleFiles(e.target.files)}
       />
 
@@ -188,10 +192,13 @@ export default function GymPhotosPage() {
             <p className="mx-auto mt-2 max-w-md text-zinc-400">
               Add photos to make your gym profile more attractive to customers.
             </p>
-            <Button className="mt-4" onClick={() => fileRef.current?.click()}>
+            <label
+              htmlFor="gym-photos-input"
+              className="mt-4 inline-flex h-11 min-h-[44px] cursor-pointer items-center justify-center rounded-[10px] bg-[#D4FF4F] px-5 text-sm font-semibold text-[#0A0F00] transition-colors hover:bg-[#e2ff7a]"
+            >
               <Upload className="mr-2 h-4 w-4" />
               Upload Photos
-            </Button>
+            </label>
           </CardContent>
         </Card>
       ) : (

@@ -277,4 +277,17 @@ export class GymsController {
       });
     }
   }
+
+  async deleteMembershipPlan(request: FastifyRequest<{ Params: { id: string; planId: string } }>, reply: FastifyReply) {
+    try {
+      const ownerId = (request.user as any).id;
+      const result = await this.gymsService.deleteMembershipPlan(request.params.planId, request.params.id, ownerId);
+      return reply.send({ success: true, data: result });
+    } catch (error) {
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'DELETE_ERROR', message: error instanceof Error ? error.message : 'Failed to delete plan' },
+      });
+    }
+  }
 }

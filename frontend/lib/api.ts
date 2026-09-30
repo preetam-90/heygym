@@ -325,6 +325,10 @@ class ApiClient {
     return response.data!.plan;
   }
 
+  async deleteMembershipPlan(gymId: string, planId: string): Promise<void> {
+    await this.request(`/gyms/${gymId}/membership-plans/${planId}`, { method: 'DELETE' });
+  }
+
   async getUsers(): Promise<User[]> {
     const response = await this.request<{ users: User[] }>('/admin/users');
     return response.data!.users;

@@ -103,4 +103,11 @@ export const gymsRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: [fastify.authenticate, fastify.requireRole('GYM_OWNER', 'ADMIN')],
     handler: gymsController.updateMembershipPlan.bind(gymsController),
   });
+
+  fastify.route({
+    method: 'DELETE',
+    url: '/:id/membership-plans/:planId',
+    preHandler: [fastify.authenticate, fastify.requireRole('GYM_OWNER', 'ADMIN')],
+    handler: gymsController.deleteMembershipPlan.bind(gymsController),
+  });
 };

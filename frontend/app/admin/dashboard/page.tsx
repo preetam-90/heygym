@@ -1,336 +1,271 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, friendlyError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { Gym, User } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { AdminStats, Enquiry, Gym, Review, User } from '@/types';
+import { GymStatusBadge, EnquiryStatusBadge } from '@/components/status-badge';
+import { EmptyState, ErrorState, LoadingSkeleton } from '@/components/ui-states';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, Dumbbell, Clock, CheckCircle, XCircle, AlertCircle, LogOut } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+
+type Tab = 'overview' | 'pending' | 'gyms' | 'reviews' | 'users' | 'enquiries';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const { user: authUser, logout } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const { user: authUser } = useAuth();
+  const [tab, setTab] = useState<Tab>('overview');
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [gyms, setGyms] = useState<Gym[]>([]);
-  const [stats, setStats] = useState<{ totalUsers: number; totalGyms: number; pendingGyms: number; approvedGyms: number; rejectedGyms: number } | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'gyms'>('stats');
+  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const checkAuth = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      // Verify the session with the server — never trust localStorage alone.
-      let current = authUser;
-      if (!current) {
-        try {
-          current = await api.me();
-        } catch {
-          current = null;
-        }
-      }
-      if (!current) {
-        router.push('/login?redirect=/admin/dashboard');
-        return;
-      }
-      if (current.role !== 'ADMIN') {
-        router.push('/');
-        return;
-      }
-      await Promise.all([fetchStats(), fetchUsers(), fetchGyms()]);
-    } catch (err) {
-      router.push('/login?redirect=/admin/dashboard');
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const data = await api.getStats();
-      setStats(data);
-    } catch (err) {
-      console.error('Failed to load stats');
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const data = await api.getUsers();
-      setUsers(data);
-    } catch (err) {
-      console.error('Failed to load users');
-    }
-  };
-
-  const fetchGyms = async () => {
-    try {
-      const data = await api.getAllGyms();
-      setGyms(data);
-    } catch (err) {
-      console.error('Failed to load gyms');
+      const [s, pending, allUsers, revs, enqs] = await Promise.all([
+        api.getStats(),
+        api.getPendingGyms(1, 20),
+        api.getUsers(1, 20),
+        api.listAdminReviews(1, 20),
+        api.listAdminEnquiries(1, 20),
+      ]);
+      setStats(s);
+      setGyms(pending.gyms);
+      setUsers(allUsers.users);
+      setReviews(revs.reviews);
+      setEnquiries(enqs.enquiries);
+    } catch (e) {
+      setError(friendlyError(e));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleGymStatusChange = async (gymId: string, status: 'APPROVED' | 'REJECTED') => {
-    try {
-      await api.updateGymStatus(gymId, status);
-      await fetchGyms();
-      await fetchStats();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update gym status');
+  useEffect(() => {
+    if (authUser && authUser.role !== 'ADMIN') {
+      router.push('/');
+      return;
     }
-  };
+    void load();
+  }, [authUser, router, load]);
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/');
-    router.refresh();
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    try {
+      await fn();
+      await load();
+      setRejectId(null);
+      setReason('');
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (loading) {
     return (
-      <div className="container px-4 py-16">
-        <div className="flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-volt" />
-        </div>
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-28">
+        <LoadingSkeleton lines={5} />
+      </div>
+    );
+  }
+
+  if (error && !stats) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 pb-20 pt-28">
+        <ErrorState message={error} onRetry={load} />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Control</p><h1 className="mt-1.5 font-display text-4xl font-semibold tracking-[-0.02em] text-white">Admin dashboard</h1>
-          <p className="mt-1.5 text-[14px] text-zinc-400">Platform overview and management</p>
-        </div>
-        <Button variant="outline" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
-        </Button>
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
-          {error}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="border-b border-white/10 mb-6">
-        <nav className="flex gap-8" aria-label="Admin tabs">
+    <div className="mx-auto max-w-7xl px-4 pb-20 pt-28">
+      <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Admin</h1>
+      {stats && (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { id: 'stats', label: 'Overview', icon: AlertCircle },
-            { id: 'users', label: 'Users', icon: Users },
-            { id: 'gyms', label: 'Gyms', icon: Dumbbell },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex min-h-[44px] items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-volt text-volt'
-                  : 'border-transparent text-zinc-400 hover:text-zinc-300'
-              }`}
-            >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-            </button>
+            { label: 'Total users', value: stats.totalUsers },
+            { label: 'Total gyms', value: stats.totalGyms },
+            { label: 'Pending approval', value: stats.pendingGyms },
+            { label: 'Approved', value: stats.approvedGyms },
+            { label: 'Draft / needs changes', value: stats.draftGyms ?? stats.rejectedGyms },
+            { label: 'Suspended', value: stats.suspendedGyms ?? 0 },
+            { label: 'Enquiries', value: stats.totalEnquiries ?? 0 },
+            { label: 'Reviews', value: stats.totalReviews ?? 0 },
+          ].map((c) => (
+            <div key={c.label} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+              <p className="text-[13px] text-zinc-500">{c.label}</p>
+              <p className="tabular mt-1 text-3xl font-bold text-zinc-50">{c.value}</p>
+            </div>
           ))}
-        </nav>
-      </div>
-
-      {/* Stats Tab */}
-      {activeTab === 'stats' && stats && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-volt/15 rounded-lg flex items-center justify-center">
-                    <Users className="h-6 w-6 text-volt" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-400">Total Users</p>
-                    <p className="text-2xl font-bold text-white">{stats.totalUsers}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-500/15 rounded-lg flex items-center justify-center">
-                    <Dumbbell className="h-6 w-6 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-400">Total Gyms</p>
-                    <p className="text-2xl font-bold text-white">{stats.totalGyms}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-yellow-500/15 rounded-lg flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-400">Pending Approval</p>
-                    <p className="text-2xl font-bold text-white">{stats.pendingGyms}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-500/15 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="h-6 w-6 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-400">Approved</p>
-                    <p className="text-2xl font-bold text-white">{stats.approvedGyms}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-red-500/15 rounded-lg flex items-center justify-center">
-                    <XCircle className="h-6 w-6 text-red-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-400">Rejected</p>
-                    <p className="text-2xl font-bold text-white">{stats.rejectedGyms}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       )}
 
-      {/* Users Tab */}
-      {activeTab === 'users' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>All Users</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left text-sm text-zinc-400 border-b border-white/10">
-                    <th className="pb-3 font-medium">Name</th>
-                    <th className="pb-3 font-medium">Email</th>
-                    <th className="pb-3 font-medium">Role</th>
-                    <th className="pb-3 font-medium">Joined</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  {users.map(user => (
-                    <tr key={user.id} className="hover:bg-white/[0.03]">
-                      <td className="py-4 font-medium">{user.name}</td>
-                      <td className="py-4 text-zinc-400">{user.email}</td>
-                      <td className="py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          user.role === 'ADMIN' ? 'bg-purple-500/15 text-purple-400' :
-                          user.role === 'GYM_OWNER' ? 'bg-blue-500/15 text-blue-400' :
-                          'bg-white/5 text-zinc-200'
-                        }`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="py-4 text-zinc-400 text-sm">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mt-6 flex gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02] p-1.5" role="tablist">
+        {(['overview', 'pending', 'gyms', 'reviews', 'users', 'enquiries'] as Tab[]).map((t) => (
+          <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`flex-1 rounded-xl px-4 py-2.5 text-[13.5px] font-medium capitalize ${tab === t ? 'bg-lime-300 text-black' : 'text-zinc-400 hover:text-white'}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+      {error && <p className="mt-3 text-[13.5px] text-red-300">{error}</p>}
+
+      {tab === 'pending' && (
+        <div className="mt-4 space-y-3">
+          {gyms.length === 0 ? (
+            <EmptyState title="No pending gyms" hint="New submissions will appear here for review." />
+          ) : (
+            gyms.map((g) => (
+              <div key={g.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[15px] font-semibold text-zinc-100">{g.name}</p>
+                    <p className="text-[13px] text-zinc-500">{g.address}, {g.city} · Owner: {g.owner?.name}</p>
+                  </div>
+                  <GymStatusBadge status={g.status} />
+                </div>
+                {rejectId === g.id ? (
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <Input placeholder="Reason (required)" value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Rejection reason" />
+                    <Button disabled={busy || !reason.trim()} onClick={() => act(() => api.rejectGym(g.id, reason.trim()))}>Reject gym</Button>
+                    <Button variant="outline" onClick={() => { setRejectId(null); setReason(''); }}>Cancel</Button>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link href={`/gyms/${g.slug || g.id}`}><Button variant="outline">View</Button></Link>
+                    <Button disabled={busy} onClick={() => act(() => api.approveGym(g.id))}>Approve</Button>
+                    <Button variant="outline" onClick={() => setRejectId(g.id)}>Reject</Button>
+                    <Button variant="outline" onClick={() => act(() => api.suspendGym(g.id, 'Policy review'))}>Suspend</Button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
       )}
 
-      {/* Gyms Tab */}
-      {activeTab === 'gyms' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>All Gyms</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left text-sm text-zinc-400 border-b border-white/10">
-                    <th className="pb-3 font-medium">Gym Name</th>
-                    <th className="pb-3 font-medium">Owner</th>
-                    <th className="pb-3 font-medium">City</th>
-                    <th className="pb-3 font-medium">Status</th>
-                    <th className="pb-3 font-medium">Plans</th>
-                    <th className="pb-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  {gyms.map(gym => (
-                    <tr key={gym.id} className="hover:bg-white/[0.03]">
-                      <td className="py-4 font-medium">{gym.name}</td>
-                      <td className="py-4 text-zinc-400">{gym.owner?.name || 'N/A'}</td>
-                      <td className="py-4 text-zinc-400">{gym.city}</td>
-                      <td className="py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          gym.status === 'APPROVED' ? 'bg-green-500/15 text-green-400' :
-                          gym.status === 'PENDING' ? 'bg-yellow-500/15 text-yellow-400' :
-                          'bg-red-500/15 text-red-400'
-                        }`}>
-                          {gym.status}
-                        </span>
-                      </td>
-                      <td className="py-4 text-zinc-400">{gym.membershipPlans?.length || 0}</td>
-                      <td className="py-4">
-                        {gym.status === 'PENDING' && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleGymStatusChange(gym.id, 'APPROVED')}
-                              className="bg-volt text-black hover:brightness-110"
-                            >
-                              <CheckCircle className="mr-1 h-3 w-3" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleGymStatusChange(gym.id, 'REJECTED')}
-                            >
-                              <XCircle className="mr-1 h-3 w-3" />
-                              Reject
-                            </Button>
-                          </div>
-                        )}
-                        {gym.status !== 'PENDING' && (
-                          <span className="text-sm text-zinc-400">No action needed</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+      {tab === 'gyms' && (
+        <AdminGymList onError={setError} />
       )}
+
+      {tab === 'reviews' && (
+        <div className="mt-4 space-y-3">
+          {reviews.length === 0 ? (
+            <EmptyState title="No reviews" />
+          ) : (
+            reviews.map((r) => (
+              <div key={r.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <p className="text-[14px] text-zinc-100">★ {r.rating} · {r.gym?.name} · {r.user?.name}</p>
+                {r.comment && <p className="mt-1 text-[13.5px] text-zinc-400">{r.comment}</p>}
+                <div className="mt-2 flex gap-2">
+                  <Button variant="outline" disabled={busy} onClick={() => act(() => api.hideReview(r.id))}>Hide</Button>
+                  <Button variant="outline" disabled={busy} onClick={() => act(() => api.restoreReview(r.id))}>Restore</Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {tab === 'users' && (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+          {users.map((u) => (
+            <div key={u.id} className="flex items-center justify-between border-b border-white/5 bg-white/[0.02] p-4 last:border-0">
+              <div>
+                <p className="text-[14.5px] font-medium text-zinc-100">{u.name}</p>
+                <p className="text-[13px] text-zinc-500">{u.email} · {u.role}</p>
+              </div>
+              <span className="text-[12px] text-zinc-500">{new Date(u.createdAt).toLocaleDateString()}</span>
+            </div>
+          ))}
+          {users.length === 0 && <EmptyState title="No users" />}
+        </div>
+      )}
+
+      {tab === 'enquiries' && (
+        <div className="mt-4 space-y-3">
+          {enquiries.length === 0 ? (
+            <EmptyState title="No enquiries" />
+          ) : (
+            enquiries.map((e) => (
+              <div key={e.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <div>
+                  <p className="text-[14px] text-zinc-100">{e.gym?.name} · {e.user?.name}</p>
+                  <p className="line-clamp-1 text-[13px] text-zinc-500">{e.message}</p>
+                </div>
+                <EnquiryStatusBadge status={e.status} />
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {tab === 'overview' && (
+        <p className="mt-4 text-[14px] text-zinc-400">
+          Review pending gyms, moderate reviews, and monitor platform activity. Use the tabs above.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AdminGymList({ onError }: { onError: (m: string) => void }) {
+  const [gyms, setGyms] = useState<Gym[]>([]);
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api
+      .getAllGyms(1, 20, status || undefined)
+      .then((r) => setGyms(r.gyms))
+      .catch((e) => onError(friendlyError(e)))
+      .finally(() => setLoading(false));
+  }, [status, onError]);
+
+  if (loading) return <div className="mt-4"><LoadingSkeleton lines={3} /></div>;
+
+  return (
+    <div className="mt-4">
+      <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-[14px]" aria-label="Filter by status">
+        <option value="">All statuses</option>
+        <option value="DRAFT">Draft</option>
+        <option value="PENDING_APPROVAL">Pending</option>
+        <option value="APPROVED">Approved</option>
+        <option value="SUSPENDED">Suspended</option>
+      </select>
+      <div className="mt-3 space-y-2">
+        {gyms.map((g) => (
+          <div key={g.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            <div>
+              <p className="text-[14.5px] font-medium text-zinc-100">{g.name}</p>
+              <p className="text-[13px] text-zinc-500">{g.city}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <GymStatusBadge status={g.status} />
+              {g.status === 'SUSPENDED' ? (
+                <Button variant="outline" onClick={async () => { await api.restoreGym(g.id); setStatus((s) => s); }}>Restore</Button>
+              ) : (
+                g.status === 'APPROVED' && (
+                  <Button variant="outline" onClick={async () => { await api.suspendGym(g.id, 'Admin review'); }}>Suspend</Button>
+                )
+              )}
+            </div>
+          </div>
+        ))}
+        {gyms.length === 0 && <EmptyState title="No gyms" />}
+      </div>
     </div>
   );
 }

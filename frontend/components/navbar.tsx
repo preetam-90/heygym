@@ -1,21 +1,33 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Bell, Menu, X } from 'lucide-react';
 import { useCompareCount } from '@/lib/compare-store';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
   const { user, logout } = useAuth();
   const compareCount = useCompareCount();
   const router = useRouter();
   const pathname = usePathname();
   const isDiscover = pathname === '/' || pathname.startsWith('/gyms');
-  const isCompare = pathname.startsWith('/compare');
+
+  useEffect(() => {
+    if (!user) {
+      setUnread(0);
+      return;
+    }
+    api
+      .listNotifications(1, 1)
+      .then((r) => setUnread(r.unreadCount))
+      .catch(() => null);
+  }, [user, pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -49,15 +61,32 @@ export function Navbar() {
           </Link>
           <Link
             href="/compare"
-            aria-current={isCompare ? 'page' : undefined}
-            className={`flex items-center gap-1.5 transition-colors ${
-              isCompare
-                ? 'font-headline-sm text-[18px] font-semibold text-primary-container'
-                : 'font-label-lg text-[14px] font-semibold text-on-surface-variant hover:text-on-surface'
-            }`}
+            className="flex items-center gap-1.5 font-label-lg text-[14px] font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
           >
             Compare{compareCount > 0 ? ` (${compareCount})` : ''}
           </Link>
+          {user && (
+            <>
+              <Link
+                href="/favorites"
+                className="font-label-lg text-[14px] font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
+              >
+                Saved
+              </Link>
+              <Link
+                href="/notifications"
+                className="relative font-label-lg text-[14px] font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
+                aria-label={unread > 0 ? `${unread} unread notifications` : 'Notifications'}
+              >
+                <Bell className="h-4 w-4" aria-hidden="true" />
+                {unread > 0 && (
+                  <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-lime-300 px-1 text-[10px] font-bold text-black">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </Link>
+            </>
+          )}
           <Link
             href="/#how-it-works"
             className="font-label-lg text-[14px] font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
@@ -66,10 +95,10 @@ export function Navbar() {
           </Link>
           {user && (user.role === 'GYM_OWNER' || user.role === 'ADMIN') && (
             <Link
-              href="/gym-owner/dashboard"
+              href="/owner"
               className="font-label-lg text-[14px] font-semibold text-on-surface-variant transition-colors hover:text-on-surface"
             >
-              Owner dashboard
+              Owner
             </Link>
           )}
           {user?.role === 'ADMIN' && (

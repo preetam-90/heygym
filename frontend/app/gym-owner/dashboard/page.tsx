@@ -19,18 +19,16 @@ import {
 } from 'lucide-react';
 
 const STATUS_DOT: Record<GymStatus, string> = {
-  PENDING: 'bg-amber-400',
-  UNDER_REVIEW: 'bg-sky-400',
+  DRAFT: 'bg-amber-400',
+  PENDING_APPROVAL: 'bg-sky-400',
   APPROVED: 'bg-emerald-400',
-  REJECTED: 'bg-red-400',
   SUSPENDED: 'bg-zinc-500',
 };
 
 const STATUS_LABEL: Record<GymStatus, string> = {
-  PENDING: 'Draft',
-  UNDER_REVIEW: 'In review',
+  DRAFT: 'Draft',
+  PENDING_APPROVAL: 'In review',
   APPROVED: 'Live',
-  REJECTED: 'Needs changes',
   SUSPENDED: 'Suspended',
 };
 
@@ -276,7 +274,7 @@ export default function GymOwnerDashboardPage() {
     setEditingPlan(plan);
     setPlanName(plan.name);
     setPlanPrice(String(plan.price));
-    setPlanDuration(String(plan.duration));
+    setPlanDuration(String(plan.durationDays ?? plan.duration));
     setPlanDesc(plan.description ?? '');
     setShowPlanForm(true);
   };
@@ -285,7 +283,7 @@ export default function GymOwnerDashboardPage() {
     e.preventDefault();
     if (!gym) return;
     const price = Number(planPrice);
-    const duration = Number(planDuration);
+    const durationDays = Number(planDuration);
     if (!planName.trim() || planName.trim().length < 2) {
       setError('Plan name must be at least 2 characters.');
       return;
@@ -294,8 +292,8 @@ export default function GymOwnerDashboardPage() {
       setError('Price must be a positive number.');
       return;
     }
-    if (!Number.isInteger(duration) || duration <= 0) {
-      setError('Duration must be a whole number of months.');
+    if (!Number.isInteger(durationDays) || durationDays <= 0) {
+      setError('Duration must be a whole number of days.');
       return;
     }
     setSavingPlan(true);
@@ -305,7 +303,7 @@ export default function GymOwnerDashboardPage() {
       const payload = {
         name: planName.trim(),
         price,
-        duration,
+        durationDays,
         description: planDesc.trim() || undefined,
       };
       if (editingPlan) {
@@ -453,7 +451,7 @@ export default function GymOwnerDashboardPage() {
       ) : (
         <>
           {/* Status banner */}
-          {gym.status === 'REJECTED' && (
+          {gym.status === 'DRAFT' && gym.rejectionReason && (
             <Card className="mb-5 border-red-500/25">
               <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
@@ -461,7 +459,7 @@ export default function GymOwnerDashboardPage() {
                   <div>
                     <h2 className="text-[15px] font-semibold text-white">Changes requested</h2>
                     <p className="mt-1 text-[13.5px] text-zinc-400">
-                      {gym.rejectionReason ? <><span className="text-zinc-500">Admin note: </span>{gym.rejectionReason}</> : 'The admin requested changes before approval.'}
+                      <><span className="text-zinc-500">Admin note: </span>{gym.rejectionReason}</>
                     </p>
                   </div>
                 </div>
@@ -475,7 +473,7 @@ export default function GymOwnerDashboardPage() {
               </CardContent>
             </Card>
           )}
-          {gym.status === 'UNDER_REVIEW' && (
+          {gym.status === 'PENDING_APPROVAL' && (
             <div className="mb-5 flex items-center gap-2.5 rounded-[14px] border border-sky-500/25 bg-sky-500/[0.08] p-4 text-[13.5px] text-sky-300" role="status">
               <Clock className="h-4 w-4 shrink-0" />
               Submitted — the admin team is reviewing your gym. We&apos;ll notify you once it&apos;s live.
@@ -579,14 +577,14 @@ export default function GymOwnerDashboardPage() {
                       )}
                     </div>
                   )}
-                  {(gym.status === 'PENDING' || gym.status === 'REJECTED') && (
+                  {(gym.status === 'DRAFT') && (
                     <div className="flex flex-col gap-3 rounded-[14px] border border-volt/20 bg-volt/[0.05] p-4 sm:flex-row sm:items-center sm:justify-between">
                       <p className="text-[13.5px] leading-relaxed text-zinc-300">
-                        {gym.status === 'PENDING' ? 'Looking good? Submit for review to go live.' : 'Changes saved? Resubmit for review.'}
+                        {gym.rejectionReason ? 'Changes saved? Resubmit for review.' : 'Looking good? Submit for review to go live.'}
                       </p>
                       <Button size="sm" onClick={handleSubmit} disabled={submitting} className="shrink-0">
                         {submitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                        {gym.status === 'PENDING' ? 'Submit for review' : 'Resubmit'}
+                        {gym.rejectionReason ? 'Resubmit' : 'Submit for review'}
                       </Button>
                     </div>
                   )}
@@ -822,8 +820,8 @@ export default function GymOwnerDashboardPage() {
                           <p className="truncate text-[15px] font-semibold text-white">{plan.name}</p>
                           {plan.description && <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-zinc-400">{plan.description}</p>}
                           <p className="tabular mt-2 text-[13px] text-zinc-500">
-                            <span className="text-[17px] font-semibold text-white">${plan.price}</span>
-                            <span className="ml-1.5">/ {plan.duration} mo{plan.duration > 1 ? 's' : ''}</span>
+                            <span className="text-[17px] font-semibold text-white">₹{plan.price.toLocaleString('en-IN')}</span>
+                            <span className="ml-1.5">/ {(plan.durationDays ?? plan.duration)} days</span>
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">

@@ -2,30 +2,57 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Gym } from '@/types';
+import { MapPin, Dumbbell, ArrowRight, Star, Heart } from 'lucide-react';
+import type { Gym } from '@/types';
+import { facilityNames, gymPhotos, planDuration } from '@/types';
 import { photoSrc } from '@/lib/gym-owner';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Dumbbell, ArrowRight } from 'lucide-react';
+import { GymStatusBadge } from '@/components/status-badge';
+import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 
 interface GymCardProps {
   gym: Gym;
+  showStatus?: boolean;
 }
 
-const STATUS_DOT: Record<string, string> = {
-  APPROVED: 'bg-emerald-400',
-  PENDING: 'bg-amber-400',
-  REJECTED: 'bg-red-400',
-};
-
-export function GymCard({ gym }: GymCardProps) {
+export function GymCard({ gym, showStatus }: GymCardProps) {
+  const { user } = useAuth();
   const [imgError, setImgError] = useState(false);
-  const minPrice = gym.membershipPlans && gym.membershipPlans.length > 0
-    ? Math.min(...gym.membershipPlans.map(p => p.price))
-    : null;
-  const minPlan = minPrice != null ? gym.membershipPlans?.find(p => p.price === minPrice) : null;
-  const coverSrc = photoSrc(gym.imageUrl);
+  const [favBusy, setFavBusy] = useState(false);
+  const [favError, setFavError] = useState<string | null>(null);
+
+  const plans = gym.membershipPlans ?? [];
+  const minPrice = plans.length > 0 ? Math.min(...plans.map((p) => p.price)) : null;
+  const minPlan = minPrice != null ? plans.find((p) => p.price === minPrice) : null;
+  const photos = gymPhotos(gym);
+  const coverSrc = photoSrc(gym.imageUrl ?? photos[0]?.url);
   const showImg = !!coverSrc && !imgError;
+  const names = facilityNames(gym);
+  const link = `/gyms/${gym.slug || gym.id}`;
+
+  const toggleFavorite = async () => {
+    if (!user || favBusy) return;
+    setFavBusy(true);
+    setFavError(null);
+    try {
+      await api.addFavorite(gym.id);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed';
+      if (msg.includes('Already')) {
+        try {
+          await api.removeFavorite(gym.id);
+        } catch {
+          setFavError(msg);
+        }
+      } else {
+        setFavError(msg);
+      }
+    } finally {
+      setFavBusy(false);
+    }
+  };
 
   return (
     <Card className="card-lift group flex h-full flex-col overflow-hidden">
@@ -42,17 +69,34 @@ export function GymCard({ gym }: GymCardProps) {
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" />
-        {/* Status — quiet dot + label, not loud pill */}
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[11px] font-medium tracking-wide text-zinc-200 backdrop-blur-md">
-          <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[gym.status] ?? 'bg-zinc-400'}`} aria-hidden="true" />
-          {gym.status.charAt(0) + gym.status.slice(1).toLowerCase()}
-        </span>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+        {showStatus ? (
+          <span className="absolute left-3 top-3">
+            <GymStatusBadge status={gym.status} />
+          </span>
+        ) : (
+          gym.distanceKm != null && (
+            <span className="absolute left-3 top-3 rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[11px] font-medium text-zinc-200 backdrop-blur-md">
+              {gym.distanceKm} km away
+            </span>
+          )
+        )}
+        {user && (
+          <button
+            onClick={toggleFavorite}
+            disabled={favBusy}
+            aria-label="Save to favorites"
+            title={favError ?? 'Save to favorites'}
+            className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/55 text-zinc-200 backdrop-blur-md transition-colors hover:text-red-300 disabled:opacity-50"
+          >
+            <Heart className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
         {minPrice != null && (
-          <span className="absolute bottom-3 left-3 rounded-[8px] border border-white/10 bg-black/55 px-2.5 py-1 text-[13px] font-semibold text-white backdrop-blur-md tabular">
-            ${minPrice}
+          <span className="tabular absolute bottom-3 left-3 rounded-[8px] border border-white/10 bg-black/55 px-2.5 py-1 text-[13px] font-semibold text-white backdrop-blur-md">
+            ₹{minPrice.toLocaleString('en-IN')}
             <span className="ml-1 font-normal text-zinc-300">
-              {minPlan ? `/ ${minPlan.duration} mo` : 'starting'}
+              {minPlan ? `/ ${planDuration(minPlan)} days` : 'starting'}
             </span>
           </span>
         )}
@@ -65,13 +109,22 @@ export function GymCard({ gym }: GymCardProps) {
             {gym.address}, {gym.city}
           </p>
         </div>
-
+        {(gym.averageRating != null || (gym.reviewCount ?? 0) > 0) && (
+          <p className="flex items-center gap-1.5 text-[13px] text-zinc-300">
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden="true" />
+            <strong>{gym.averageRating?.toFixed(1) ?? '—'}</strong>
+            <span className="text-zinc-500">({gym.reviewCount ?? 0} reviews)</span>
+          </p>
+        )}
+        {names.length > 0 && (
+          <p className="line-clamp-1 text-[12.5px] text-zinc-500">{names.slice(0, 4).join(' · ')}</p>
+        )}
         {gym.description && (
           <p className="line-clamp-2 text-[13.5px] leading-relaxed text-zinc-400">{gym.description}</p>
         )}
       </CardContent>
       <CardFooter className="p-5 pt-0">
-        <Link href={`/gyms/${gym.id}`} className="w-full" aria-label={`View ${gym.name}`}>
+        <Link href={link} className="w-full" aria-label={`View ${gym.name}`}>
           <Button variant="secondary" className="w-full transition-colors group-hover:border-white/20 group-hover:bg-white/[0.1]">
             View details
             <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />

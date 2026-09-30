@@ -8,7 +8,7 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (data: { name: string; email: string; password: string; role?: string }) => Promise<User>;
+  register: (data: { name: string; email: string; password: string; phone?: string; role?: string }) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
 }
@@ -19,14 +19,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialise from the persisted session and verify it with the server.
-  // Falls back to the stored user only when the backend is unreachable,
-  // and clears the session when the token is rejected.
   useEffect(() => {
     let cancelled = false;
     const init = async () => {
       const stored = api.getStoredUser();
-      if (!stored || !api.isAuthenticated()) {
+      if (!stored) {
         if (!cancelled) {
           setUser(null);
           setIsLoading(false);
@@ -36,28 +33,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const verified = await api.me();
         if (!cancelled) setUser(verified);
-      } catch (err) {
-        if (!cancelled) {
-          const message = err instanceof Error ? err.message : '';
-          // Token rejected/expired and refresh failed → drop the session.
-          // Network failure → keep the stored user so the UI still works offline-ish.
-          if (message === 'Session expired. Please log in again.') {
-            setUser(null);
-          } else {
-            setUser(stored);
-          }
-        }
+      } catch {
+        if (!cancelled) setUser(null);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     };
     void init();
-
-    // Keep auth state in sync across tabs.
     const onStorage = (event: StorageEvent) => {
-      if (event.key === 'user' || event.key === 'accessToken') {
-        setUser(api.getStoredUser());
-      }
+      if (event.key === 'user') setUser(api.getStoredUser());
     };
     window.addEventListener('storage', onStorage);
     return () => {
@@ -73,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (data: { name: string; email: string; password: string; role?: string }) => {
+    async (data: { name: string; email: string; password: string; phone?: string; role?: string }) => {
       const auth = await api.register(data);
       setUser(auth.user);
       return auth.user;

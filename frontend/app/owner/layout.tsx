@@ -8,6 +8,7 @@ const NAV = [
   { href: '/owner', label: 'Overview' },
   { href: '/owner/gyms', label: 'My gyms' },
   { href: '/owner/enquiries', label: 'Enquiries' },
+  { href: '/owner/profile', label: 'Profile' },
 ];
 
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {

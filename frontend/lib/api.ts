@@ -390,6 +390,36 @@ class ApiClient {
     return response.data!.user;
   }
 
+  async uploadAvatar(file: File): Promise<User> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const headers: Record<string, string> = {};
+    const token = this.getAccessToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/users/me/avatar`, {
+        method: 'POST',
+        headers,
+        body: formData,
+        credentials: 'include',
+      });
+    } catch {
+      throw new Error('Unable to connect to the server. Please check your connection and try again.');
+    }
+    let data: ApiResponse<{ user: User }>;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Received an invalid response from the server. Please try again.');
+    }
+    if (!response.ok) {
+      throw new Error(data?.error?.message || 'Avatar upload failed. Please try again.');
+    }
+    if (data.data) writeStorage('user', JSON.stringify(data.data.user));
+    return data.data!.user;
+  }
+
   async getMembershipPlans(gymId: string): Promise<MembershipPlan[]> {
     const response = await this.request<{ plans: MembershipPlan[] }>(`/gyms/${gymId}/membership-plans`);
     return response.data!.plans;
